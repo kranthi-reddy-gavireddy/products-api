@@ -1,0 +1,44 @@
+services:
+  psql_bp:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5432:5432"
+    volumes:
+      - psql_volume_bp:/var/lib/postgresql/data
+
+  localstack:
+    image: localstack/localstack:3.0
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sns,sqs
+      DEBUG: 1
+      DOCKER_ENTRYPOINT_INIT_SCRIPTS: /etc/localstack/init/ready.d/init-sns.sh
+    volumes:
+      - ./init-scripts/init-sns.sh:/etc/localstack/init/ready.d/init-sns.sh
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_DISABLE_SSL=true
+    depends_on:
+      - psql_bp
+      - localstack
+
+volumes:
+  psql_volume_bp:
