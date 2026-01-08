@@ -6,7 +6,12 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"products-api/internal/database"
+	"products-api/internal/handlers"
+	"products-api/internal/repository"
+	"products-api/internal/routes"
 	"products-api/internal/server"
+	"products-api/internal/services"
 	"strconv"
 	"syscall"
 	"time"
@@ -48,9 +53,14 @@ func main() {
 	server := server.New()
 
 	server.RegisterFiberRoutes()
-
+	dbInstance := database.New().GetDB()
+	productRepo := repository.NewProductRepository(dbInstance)
+	prodcutService := services.NewProductService(productRepo)
+	productHandler := handlers.NewProductHandler(prodcutService)
+	productRoutes := routes.NewProductRoutes(*productHandler)
+	productRoutes.RegisterRoutes(server)
 	// Add message processors for your queues
-	server.AddMessageProcessor("http://localstack:4566/000000000000/MyQueue", func(msg *types.Message) error {
+	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
 		return server.HandleProductMessage(msg)
 	})
 

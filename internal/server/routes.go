@@ -87,7 +87,7 @@ func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
 	}
 
 	// Receive messages from queue
-	queueURL := "http://localstack:4566/000000000000/MyQueue" // For LocalStack; use env for real AWS
+	queueURL := "http://localstack:4566/000000000000/OrderCreatedTopic" // For LocalStack; use env for real AWS
 
 	result, err := s.sqs.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
 		QueueUrl:            &queueURL,

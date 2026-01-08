@@ -21,7 +21,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
-	err := h.productService.Create(c.Context(), product)
+	err := h.productService.Create(c.Context(), &product)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create product"})
 	}
