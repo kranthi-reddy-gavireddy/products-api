@@ -2,13 +2,19 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
+
+func stringPtr(s string) *string {
+	return &s
+}
 
 func (s *FiberServer) RegisterFiberRoutes() {
 	// Apply CORS middleware
@@ -81,7 +87,7 @@ func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
 	}
 
 	// Receive messages from queue
-	queueURL := "http://localstack:4566/000000000000/MyQueue" // For LocalStack; use env for real AWS
+	queueURL := "http://localstack:4566/000000000000/OrderCreatedTopic" // For LocalStack; use env for real AWS
 
 	result, err := s.sqs.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
 		QueueUrl:            &queueURL,
@@ -110,4 +116,30 @@ func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"events": messages})
+}
+
+// HandleProductMessage processes messages from the product queue
+func (s *FiberServer) HandleProductMessage(msg *types.Message) error {
+	log.Printf("Processing message: %s", *msg.Body)
+
+	// Parse SNS message format
+	var snsMessage struct {
+		Type      string `json:"Type"`
+		MessageId string `json:"MessageId"`
+		TopicArn  string `json:"TopicArn"`
+		Message   string `json:"Message"`
+	}
+
+	if err := json.Unmarshal([]byte(*msg.Body), &snsMessage); err != nil {
+		log.Printf("Failed to parse SNS message: %v", err)
+		return err
+	}
+
+	// Process based on message type or content
+	log.Printf("Received message from topic %s: %s", snsMessage.TopicArn, snsMessage.Message)
+
+	// Add your business logic here
+	// For example, update database, send notifications, etc.
+
+	return nil
 }

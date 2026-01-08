@@ -22,6 +22,9 @@ type Service interface {
 	// Close terminates the database connection.
 	// It returns an error if the connection cannot be closed.
 	Close() error
+
+	// GetDB returns the underlying *sql.DB instance
+	GetDB() *sql.DB
 }
 
 type service struct {
@@ -35,23 +38,34 @@ var (
 	port       = os.Getenv("DB_PORT")
 	host       = os.Getenv("DB_HOST")
 	schema     = os.Getenv("DB_SCHEMA")
-	dbInstance *service
+	DBInstance *service
 )
 
 func New() Service {
 	// Reuse Connection
-	if dbInstance != nil {
-		return dbInstance
+	if DBInstance != nil {
+		return DBInstance
 	}
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	dbInstance = &service{
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		log.Fatal("Failed to ping database:", err)
+	}
+
+	// Run migrations
+	if err := RunMigrations(db); err != nil {
+		log.Fatal("Failed to run migrations:", err)
+	}
+
+	DBInstance = &service{
 		db: db,
 	}
-	return dbInstance
+	return DBInstance
 }
 
 // Health checks the health of the database connection by pinging the database.
@@ -112,4 +126,9 @@ func (s *service) Health() map[string]string {
 func (s *service) Close() error {
 	log.Printf("Disconnected from database: %s", database)
 	return s.db.Close()
+}
+
+// GetDB returns the underlying *sql.DB instance
+func (s *service) GetDB() *sql.DB {
+	return s.db
 }

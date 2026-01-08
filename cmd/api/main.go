@@ -6,11 +6,17 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"products-api/internal/database"
+	"products-api/internal/handlers"
+	"products-api/internal/repository"
+	"products-api/internal/routes"
 	"products-api/internal/server"
+	"products-api/internal/services"
 	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -24,6 +30,9 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 
 	log.Println("shutting down gracefully, press Ctrl+C again to force")
 	stop() // Allow Ctrl+C to force shutdown
+
+	// Stop message processors first
+	fiberServer.StopMessageProcessors()
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
@@ -44,6 +53,19 @@ func main() {
 	server := server.New()
 
 	server.RegisterFiberRoutes()
+	dbInstance := database.New().GetDB()
+	productRepo := repository.NewProductRepository(dbInstance)
+	prodcutService := services.NewProductService(productRepo)
+	productHandler := handlers.NewProductHandler(prodcutService)
+	productRoutes := routes.NewProductRoutes(*productHandler)
+	productRoutes.RegisterRoutes(server)
+	// Add message processors for your queues
+	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
+		return server.HandleProductMessage(msg)
+	})
+
+	// Start background message processors
+	server.StartMessageProcessors()
 
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
