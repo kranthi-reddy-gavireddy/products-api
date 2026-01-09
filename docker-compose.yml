@@ -32,6 +32,7 @@ services:
     env_file:
       - .env
     environment:
+      - PORT=8080
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
@@ -41,6 +42,27 @@ services:
     depends_on:
       - psql_bp
       - localstack
+
+  ruby_service:
+    image: ruby:3.2
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command: ruby -e "require 'webrick'; WEBrick::HTTPServer.new(:Port => 3000, :DocumentRoot => '/usr/src/app').start"
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+
+  test:
+    image: ruby:3.2
+    working_dir: /app/tests/behaviour
+    volumes:
+      - .:/app
+    environment:
+      - BASE_URL=http://app:8080
+    command: bash -c "bundle install && cucumber"
+    depends_on:
+      - app
 
 volumes:
   psql_volume_bp:

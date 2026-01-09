@@ -21,6 +21,14 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
+	// Validate required fields
+	if product.Name == "" || product.Price <= 0 || product.Quantity < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid product data"})
+	}
+
+	// Set unique ID
+	product.SetID()
+
 	err := h.productService.Create(c.Context(), &product)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create product"})
