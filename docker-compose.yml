@@ -11,6 +11,11 @@ services:
     volumes:
       - psql_volume_bp:/var/lib/postgresql/data
       - ./init-scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   localstack:
     image: localstack/localstack:3.0
@@ -23,6 +28,11 @@ services:
       DOCKER_ENTRYPOINT_INIT_SCRIPTS: /etc/localstack/init/ready.d/init-sns.sh
     volumes:
       - ./init-scripts/init-sns.sh:/etc/localstack/init/ready.d/init-sns.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
@@ -39,14 +49,11 @@ services:
       - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
       - AWS_ENDPOINT_URL=http://localstack:4566
       - AWS_DISABLE_SSL=true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/products"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     depends_on:
-      - psql_bp
-      - localstack
+      psql_bp:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
 
   ruby_service:
     image: ruby:3.2
