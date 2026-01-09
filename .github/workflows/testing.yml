@@ -34,5 +34,4 @@ jobs:
 
     - name: Build and run tests
       run: |
-        docker compose up --build -d psql_bp localstack app
-        docker compose up test
+        docker compose up --build test
