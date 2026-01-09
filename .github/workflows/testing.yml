@@ -34,4 +34,9 @@ jobs:
 
     - name: Build and run tests
       run: |
-        docker compose up --build test
+        echo "Starting services..."
+        docker compose up --build -d psql_bp localstack app
+        echo "Waiting for services to be ready..."
+        docker compose run --rm test bash -c "until curl -f http://app:8080/products > /dev/null 2>&1; do echo 'Waiting for app...'; sleep 5; done"
+        echo "Running tests..."
+        docker compose run --rm test

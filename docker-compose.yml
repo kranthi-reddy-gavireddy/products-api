@@ -65,7 +65,7 @@ services:
       - .:/app
     environment:
       - BASE_URL=http://app:8080
-    command: bash -c "bundle install && timeout 60 bash -c 'until curl -f http://app:8080/products > /dev/null 2>&1; do sleep 1; done' && cucumber"
+    command: bash -c "bundle install && cucumber"
     depends_on:
       - app
 
