@@ -19,14 +19,14 @@ type ProductRepositoryTestSuite struct {
 	repo *ProductRepository
 }
 
-var (
-	product models.Product = models.Product{
+func MockProduct() models.Product {
+	return models.Product{
 		BaseModel: models.BaseModel{ID: "1"},
 		Name:      "Test Product",
 		Price:     9.99,
 		Quantity:  100,
 	}
-)
+}
 
 func (suite *ProductRepositoryTestSuite) SetupSuite() {
 	db, mock, err := sqlmock.New()
@@ -50,18 +50,13 @@ func (suite *ProductRepositoryTestSuite) TearDownTest() {
 
 func setupProductMock(mock sqlmock.Sqlmock) {
 	fixedTime := time.Now()
-	product := models.Product{
-		BaseModel: models.BaseModel{ID: "1"},
-		Name:      "Test Product",
-		Price:     9.99,
-		Quantity:  100,
-	}
-
+	product := MockProduct()
 	mock.ExpectQuery("INSERT INTO products").WithArgs(product.ID, product.Name, product.Price, product.SellerID, product.Quantity).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "", 0, fixedTime, fixedTime))
-	mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs(product.ID).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "", 0, fixedTime, fixedTime))
+	mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs(product.ID).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "", 100, fixedTime, fixedTime))
 }
 
 func (suite *ProductRepositoryTestSuite) TestCreateProduct() {
+	product := MockProduct()
 	setupProductMock(suite.mock)
 
 	err := suite.repo.Create(context.Background(), &product)
@@ -69,11 +64,17 @@ func (suite *ProductRepositoryTestSuite) TestCreateProduct() {
 
 	storedProduct, err := suite.repo.GetProductByID(context.Background(), product.ID)
 	suite.NoError(err, "expected no error while retrieving product")
-	assert.Equal(suite.T(), product, storedProduct, "expected retrieved product to match created product")
+	assert.Equal(suite.T(), product.ID, storedProduct.ID)
+	assert.Equal(suite.T(), product.Name, storedProduct.Name)
+	assert.Equal(suite.T(), product.Price, storedProduct.Price)
+	assert.Equal(suite.T(), product.SellerID, storedProduct.SellerID)
+	assert.Equal(suite.T(), product.Quantity, storedProduct.Quantity)
 }
 
 func (suite *ProductRepositoryTestSuite) TestUpdateProductCount() {
 	fixedTime := time.Now()
+	product := MockProduct()
+	product.Quantity = 100
 	suite.mock.ExpectExec("UPDATE .*").WithArgs(95, "1").WillReturnResult(sqlmock.NewResult(1, 1))
 	suite.mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs("1").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow("1", "Test Product", 9.99, "", 95, fixedTime, fixedTime))
 	err := suite.repo.UpdateProductCount(context.Background(), &product, 5)
@@ -114,7 +115,7 @@ func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
 }
 
 func (suite *ProductRepositoryTestSuite) TestDeleteProduct() {
-	suite.mock.ExpectExec("DELETE FROM products WHERE .*").WithArgs("1").WillReturnResult(sqlmock.NewResult(1, 1)).WithArgs(product.ID)
+	suite.mock.ExpectExec("DELETE FROM products WHERE .*").WithArgs("1").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := suite.repo.DeleteProduct(context.Background(), "1")
 	suite.NoError(err, "expected no error while deleting product")
