@@ -1,0 +1,41 @@
+name: Behavior Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  behavior-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        PORT=8080
+        APP_ENV=test
+        DB_HOST=psql_bp
+        DB_PORT=5432
+        DB_DATABASE=test
+        DB_USERNAME=test
+        DB_PASSWORD=test
+        DB_SCHEMA=public
+
+        # AWS Configuration (dummy for LocalStack)
+        AWS_ACCESS_KEY_ID=test
+        AWS_SECRET_ACCESS_KEY=test
+        AWS_REGION=us-east-1
+        SNS_TOPIC_ARN=arn:aws:sns:us-east-1:000000000000:OrderCreatedTopic
+        EOF
+
+    - name: Build and run tests
+      run: |
+        docker-compose up --build -d psql_bp localstack app
+        docker-compose up test

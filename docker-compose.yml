@@ -32,15 +32,42 @@ services:
     env_file:
       - .env
     environment:
+      - PORT=8080
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
       - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
       - AWS_ENDPOINT_URL=http://localstack:4566
       - AWS_DISABLE_SSL=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/products"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       - psql_bp
       - localstack
+
+  ruby_service:
+    image: ruby:3.2
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command: ruby -e "require 'webrick'; WEBrick::HTTPServer.new(:Port => 3000, :DocumentRoot => '/usr/src/app').start"
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+
+  test:
+    image: ruby:3.2
+    working_dir: /app/tests/behaviour
+    volumes:
+      - .:/app
+    environment:
+      - BASE_URL=http://app:8080
+    command: bash -c "bundle install && until curl -f http://app:8080/products > /dev/null 2>&1; do sleep 1; done && cucumber"
+    depends_on:
+      - app
 
 volumes:
   psql_volume_bp:
