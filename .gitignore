@@ -33,4 +33,4 @@ main
 .DS_Store
 
 # But do NOT ignore docker.test
-!docker.test
+!Dockerfile.test
