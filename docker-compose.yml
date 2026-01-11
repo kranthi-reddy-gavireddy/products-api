@@ -54,7 +54,9 @@ services:
     working_dir: /usr/src/app
 
   test:
-    image: ruby:3.2
+    build:
+      context: .
+      dockerfile: Dockerfile.test
     working_dir: /app/tests/behaviour
     volumes:
       - .:/app
