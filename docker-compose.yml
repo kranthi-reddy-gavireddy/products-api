@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   psql_bp:
     image: postgres:17
@@ -11,6 +13,11 @@ services:
     volumes:
       - psql_volume_bp:/var/lib/postgresql/data
       - ./init-scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   localstack:
     image: localstack/localstack:3.0
@@ -23,6 +30,11 @@ services:
       DOCKER_ENTRYPOINT_INIT_SCRIPTS: /etc/localstack/init/ready.d/init-sns.sh
     volumes:
       - ./init-scripts/init-sns.sh:/etc/localstack/init/ready.d/init-sns.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
     build: .
@@ -32,16 +44,20 @@ services:
     env_file:
       - .env
     environment:
-      - PORT=8080
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_DISABLE_SSL=true
+      PORT: 8080
+      DB_DSN: postgres://test:test@psql_bp:5432/test?sslmode=disable
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DISABLE_SSL: "true"
     depends_on:
-      - psql_bp
-      - localstack
+      psql_bp:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   ruby_service:
     image: ruby:3.2
@@ -61,10 +77,11 @@ services:
     volumes:
       - .:/app
     environment:
-      - BASE_URL=http://app:8080
+      BASE_URL: http://app:8080
     command: bash -c "bundle install && cucumber"
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
 volumes:
   psql_volume_bp:

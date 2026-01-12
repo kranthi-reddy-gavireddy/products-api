@@ -47,7 +47,7 @@ func New() Service {
 		return DBInstance
 	}
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
-	db, err := sql.Open("pgx", connStr)
+	db, err := waitForDB(connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,6 +66,25 @@ func New() Service {
 		db: db,
 	}
 	return DBInstance
+}
+func waitForDB(connStr string) (*sql.DB, error) {
+	var db *sql.DB
+	var err error
+
+	for i := 1; i <= 15; i++ {
+		db, err = sql.Open("pgx", connStr)
+		if err == nil {
+			if err = db.Ping(); err == nil {
+				log.Println("✅ database connected")
+				return db, nil
+			}
+		}
+
+		log.Printf("⏳ waiting for database... (%d/15)\n", i)
+		time.Sleep(2 * time.Second)
+	}
+
+	return nil, fmt.Errorf("database not ready after retries: %w", err)
 }
 
 // Health checks the health of the database connection by pinging the database.
