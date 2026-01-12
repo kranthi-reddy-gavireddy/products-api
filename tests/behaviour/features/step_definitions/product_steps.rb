@@ -2,6 +2,15 @@ require 'httparty'
 
 BASE_URL = ENV['BASE_URL'] || 'http://localhost:8080'
 
+When ('I request for healthcheck') do
+  @response = HTTParty.get("#{BASE_URL}/health")
+end
+
+Then('I should receive {int} status with json payload')  do |status_code|
+  expect(@response.code).to eq(status_code)
+  expect(@response.parsed_response['status']).to eq('up')
+end
+
 When('I request all products') do
   @response = HTTParty.get("#{BASE_URL}/products")
 end

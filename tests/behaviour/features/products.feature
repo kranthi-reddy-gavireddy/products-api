@@ -3,6 +3,10 @@ Feature: Product Management
   I want to manage products
   So that I can create and retrieve product information
 
+  Scenario: Trigger healthcheck point
+            When I request for healthcheck
+            Then I should receive 200 status with json payload
+
   Scenario: Retrieve all products
     When I request all products
     Then I should receive a list of products
