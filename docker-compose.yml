@@ -1,23 +1,19 @@
 services:
   psql_bp:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: test
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: test
-      POSTGRES_HOST_AUTH_METHOD: trust
-    ports:
-      - "5432:5432"
-    volumes:
-    - psql_volume_bp:/var/lib/postgresql/data
-    - ./init-scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U $$POSTGRES_USER"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
+  image: postgres:15
+  container_name: psql_bp
+  environment:
+    POSTGRES_DB: test
+    POSTGRES_USER: test
+    POSTGRES_PASSWORD: test
+  ports:
+    - "5432:5432"
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -h localhost -U test -d test"]
+    interval: 5s
+    timeout: 5s
+    retries: 10
+    start_period: 30s
   localstack:
     image: localstack/localstack:3.0
     restart: unless-stopped
