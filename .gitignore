@@ -32,3 +32,5 @@ main
 # OS X generated file
 .DS_Store
 
+# But do NOT ignore docker.test
+!Dockerfile.test

@@ -1,19 +1,22 @@
 services:
   psql_bp:
-    image: postgres:17
-    restart: unless-stopped
+    image: postgres:15
+    container_name: psql_bp
     environment:
       POSTGRES_DB: test
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
     ports:
-      - "5432:5432"
-    volumes:
-      - psql_volume_bp:/var/lib/postgresql/data
-      - ./init-scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-
+    - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U test -d test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   localstack:
     image: localstack/localstack:3.0
+    restart: unless-stopped
     ports:
       - "4566:4566"
     environment:
@@ -23,6 +26,11 @@ services:
       DOCKER_ENTRYPOINT_INIT_SCRIPTS: /etc/localstack/init/ready.d/init-sns.sh
     volumes:
       - ./init-scripts/init-sns.sh:/etc/localstack/init/ready.d/init-sns.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
 
   app:
     build: .
@@ -32,15 +40,42 @@ services:
     env_file:
       - .env
     environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_DISABLE_SSL=true
+      PORT: 8080
+      DB_DSN: postgres://test:test@psql_bp:5432/test?sslmode=disable
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DISABLE_SSL: "true"
     depends_on:
-      - psql_bp
-      - localstack
+      psql_bp:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
 
+  ruby_service:
+    image: ruby:3.2
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command: >
+      ruby -e "require 'webrick';
+      WEBrick::HTTPServer.new(
+        :Port => 3000,
+        :DocumentRoot => '/usr/src/app'
+      ).start"
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    working_dir: /app/tests/behaviour
+    volumes:
+      - .:/app
+    environment:
+      BASE_URL: http://app:8080
+    command: bash -c "bundle install && cucumber"
+    depends_on:
+      - app
 volumes:
   psql_volume_bp:
