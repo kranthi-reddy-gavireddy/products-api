@@ -35,4 +35,4 @@ jobs:
     - name: Build and run tests
       run: |
         docker compose -f docker-compose.yml up -d --build  psql_bp localstack app ruby_service         
-        docker compose run --rm app
+        docker compose run --rm test
