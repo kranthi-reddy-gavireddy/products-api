@@ -1,19 +1,19 @@
 services:
   psql_bp:
-  image: postgres:15
-  container_name: psql_bp
-  environment:
-    POSTGRES_DB: test
-    POSTGRES_USER: test
-    POSTGRES_PASSWORD: test
-  ports:
+    image: postgres:15
+    container_name: psql_bp
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
     - "5432:5432"
-  healthcheck:
-    test: ["CMD-SHELL", "pg_isready -h localhost -U test -d test"]
-    interval: 5s
-    timeout: 5s
-    retries: 10
-    start_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U test -d test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   localstack:
     image: localstack/localstack:3.0
     restart: unless-stopped
