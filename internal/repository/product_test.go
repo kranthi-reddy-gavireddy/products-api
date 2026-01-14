@@ -62,7 +62,7 @@ func (suite *ProductRepositoryTestSuite) TestCreateProduct() {
 	err := suite.repo.Create(context.Background(), &product)
 	suite.NoError(err, "expected no error while creating product")
 
-	storedProduct, err := suite.repo.GetProductByID(context.Background(), product.ID)
+	storedProduct, err := suite.repo.GetByID(context.Background(), product.ID)
 	suite.NoError(err, "expected no error while retrieving product")
 	assert.Equal(suite.T(), product.ID, storedProduct.ID)
 	assert.Equal(suite.T(), product.Name, storedProduct.Name)
@@ -82,7 +82,7 @@ func (suite *ProductRepositoryTestSuite) TestUpdateProductCount() {
 	assert.Equal(suite.T(), 95, product.Quantity, "expected product quantity to be updated correctly")
 
 	// Additionally check via GetProductByID
-	resultProduct, err := suite.repo.GetProductByID(context.Background(), "1")
+	resultProduct, err := suite.repo.GetByID(context.Background(), "1")
 	suite.NoError(err, "expected no error while retrieving product")
 	assert.Equal(suite.T(), 95, resultProduct.Quantity, "expected retrieved product quantity to be updated")
 }
@@ -122,7 +122,7 @@ func (suite *ProductRepositoryTestSuite) TestDeleteProduct() {
 
 	suite.mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs("1").WillReturnError(sql.ErrNoRows)
 
-	deletedProduct, err := suite.repo.GetProductByID(context.Background(), "1")
+	deletedProduct, err := suite.repo.GetByID(context.Background(), "1")
 	suite.Error(err, "expected error while retrieving deleted product")
 	suite.Nil(deletedProduct, "expected no product to be returned after deletion")
 }

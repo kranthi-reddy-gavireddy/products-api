@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"products-api/internal/models"
 	"products-api/internal/services"
 
@@ -43,4 +44,34 @@ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve products"})
 	}
 	return c.JSON(products)
+}
+
+func (h *ProductHandler) GetByID(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Product ID is required"})
+	}
+
+	product, err := h.productService.GetByID(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve product"})
+	}
+	if product == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Product not found"})
+	}
+	return c.Status(fiber.StatusOK).JSON(product)
+}
+
+func (h *ProductHandler) Delete(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Product ID is required"})
+	}
+
+	err := h.productService.Delete(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete product"})
+	}
+	msg := fmt.Sprintf("Product deleted successfully %s", id)
+	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"message": msg, "id": id})
 }

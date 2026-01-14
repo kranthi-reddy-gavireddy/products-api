@@ -12,6 +12,7 @@ import (
 	"products-api/internal/routes"
 	"products-api/internal/server"
 	"products-api/internal/services"
+	"products-api/message-broker/listeners"
 	"strconv"
 	"syscall"
 	"time"
@@ -61,9 +62,8 @@ func main() {
 	productRoutes.RegisterRoutes(server)
 	// Add message processors for your queues
 	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
-		return server.HandleProductMessage(msg)
+		return listeners.HandleOrderCreation(msg, prodcutService)
 	})
-
 	// Start background message processors
 	server.StartMessageProcessors()
 

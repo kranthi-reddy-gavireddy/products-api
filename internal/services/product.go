@@ -32,7 +32,7 @@ func (s *ProductService) GetProducts(ctx context.Context) ([]models.Product, err
 }
 
 func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold int) (*models.Product, error) {
-	product, err := s.repo.GetProductByID(ctx, id)
+	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		log.Printf("Error retrieving product by ID: %v", err)
 		return nil, err
@@ -45,6 +45,32 @@ func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold
 	}
 	log.Printf("Updated product count successfully for product  %v", product)
 	return product, nil
+}
+
+func (s *ProductService) GetByID(ctx context.Context, id string) (*models.Product, error) {
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		log.Printf("Error retrieving product by ID: %v", err)
+		return nil, err
+	}
+	log.Printf("Retrieved product by ID %s: %v", id, product)
+	return product, nil
+}
+
+func (s *ProductService) Delete(ctx context.Context, id string) error {
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		log.Printf("Error retrieving product by ID before deletion: %v", err)
+		return err
+	}
+	log.Printf("Deleting product: %v", product)
+	err = s.repo.DeleteProduct(ctx, id)
+	if err != nil {
+		log.Printf("Error deleting product by ID: %v", err)
+		return err
+	}
+	log.Printf("Deleted product by ID %s", id)
+	return nil
 }
 
 // CreateProduct creates a new product

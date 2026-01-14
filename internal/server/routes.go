@@ -2,12 +2,10 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
@@ -119,27 +117,27 @@ func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
 }
 
 // HandleProductMessage processes messages from the product queue
-func (s *FiberServer) HandleProductMessage(msg *types.Message) error {
-	log.Printf("Processing message: %s", *msg.Body)
+// func (s *FiberServer) HandleProductMessage(msg *types.Message) error {
+// 	log.Printf("Processing message: %s", *msg.Body)
 
-	// Parse SNS message format
-	var snsMessage struct {
-		Type      string `json:"Type"`
-		MessageId string `json:"MessageId"`
-		TopicArn  string `json:"TopicArn"`
-		Message   string `json:"Message"`
-	}
+// 	// Parse SNS message format
+// 	var snsMessage struct {
+// 		Type      string `json:"Type"`
+// 		MessageId string `json:"MessageId"`
+// 		TopicArn  string `json:"TopicArn"`
+// 		Message   string `json:"Message"`
+// 	}
 
-	if err := json.Unmarshal([]byte(*msg.Body), &snsMessage); err != nil {
-		log.Printf("Failed to parse SNS message: %v", err)
-		return err
-	}
+// 	if err := json.Unmarshal([]byte(*msg.Body), &snsMessage); err != nil {
+// 		log.Printf("Failed to parse SNS message: %v", err)
+// 		return err
+// 	}
 
-	// Process based on message type or content
-	log.Printf("Received message from topic %s: %s", snsMessage.TopicArn, snsMessage.Message)
+// 	// Process based on message type or content
+// 	log.Printf("Received message from topic %s: %s", snsMessage.TopicArn, snsMessage.Message)
 
-	// Add your business logic here
-	// For example, update database, send notifications, etc.
+// 	// Add your business logic here
+// 	// For example, update database, send notifications, etc.
 
-	return nil
-}
+// 	return nil
+// }
