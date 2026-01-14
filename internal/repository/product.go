@@ -68,7 +68,7 @@ func (r *ProductRepository) DeleteProduct(ctx context.Context, id string) error 
 	return err
 }
 
-func (r *ProductRepository) GetProductByID(ctx context.Context, id string) (*models.Product, error) {
+func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Product, error) {
 	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products WHERE id = $1"
 	var p models.Product
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.CreatedAt, &p.UpdatedAt)
