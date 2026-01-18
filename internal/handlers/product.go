@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"products-api/internal/models"
 	"products-api/internal/services"
 
@@ -37,7 +38,16 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
-	products, err := h.productService.GetProducts(c.Context())
+	pagnation := struct {
+		Limit  int `json:"limit"`
+		Offset int `json:"offset"`
+	}{}
+	err := c.QueryParser(&pagnation)
+	if err != nil {
+		log.Printf("Error parsing query params: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
+	}
+	products, err := h.productService.GetProducts(c.Context(), pagnation.Limit, pagnation.Offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve products"})
 	}

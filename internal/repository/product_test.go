@@ -100,7 +100,7 @@ func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
 
 	suite.mock.ExpectQuery("SELECT .* FROM products$").WillReturnRows(rows)
 
-	result, err := suite.repo.GetAll(context.Background())
+	result, err := suite.repo.GetAll(context.Background(), 20, 0)
 	suite.NoError(err, "expected no error while getting all products")
 	suite.Len(result, 2, "expected two products")
 	// Note: Exact match may fail due to time fields, so check key fields

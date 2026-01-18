@@ -20,9 +20,9 @@ func NewProductRepository(db *sql.DB) *ProductRepository {
 	return &ProductRepository{db: db}
 }
 
-func (r *ProductRepository) GetAll(ctx context.Context) ([]models.Product, error) {
-	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products"
-	rows, err := r.db.QueryContext(ctx, query)
+func (r *ProductRepository) GetAll(ctx context.Context, limit, offset int) ([]models.Product, error) {
+	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products LIMIT $1 OFFSET $2"
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}

@@ -30,8 +30,15 @@ func (s *ProductService) Create(context context.Context, product *models.Product
 }
 
 // GetProducts retrieves all products
-func (s *ProductService) GetProducts(ctx context.Context) ([]models.Product, error) {
-	products, err := s.repo.GetAll(ctx)
+func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]models.Product, error) {
+	var err error
+	if limit == 0 {
+		log.Printf("Limit not provided, setting default limit to 20")
+		limit = 20
+	}
+	log.Printf("Retrieving products with limit %d and offset %d", limit, offset)
+	products, err := s.repo.GetAll(ctx, limit, offset)
+
 	if err != nil {
 		log.Printf("Error retrieving products: %v", err)
 		return nil, err
