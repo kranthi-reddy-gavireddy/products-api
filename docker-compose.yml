@@ -73,7 +73,7 @@ services:
     volumes:
       - .:/app
     environment:
-      BASE_URL: http://app:8080
+      BASE_URL: http://app:8080/api
     command: bash -c "bundle install && cucumber"
     depends_on:
       - app

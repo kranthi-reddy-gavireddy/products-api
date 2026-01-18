@@ -5,6 +5,9 @@ import (
 	"log"
 	"products-api/internal/models"
 	"products-api/internal/repository"
+	"products-api/internal/utils"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // ProductService handles product business logic
@@ -13,7 +16,13 @@ type ProductService struct {
 }
 
 func (s *ProductService) Create(context context.Context, product *models.Product) error {
-	err := s.repo.Create(context, product)
+	var err error
+	err = utils.DataValidator(product)
+	if err != nil {
+		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
+		return err
+	}
+	err = s.repo.Create(context, product)
 	if err != nil {
 		log.Printf("Error creating product: %v", err)
 	}

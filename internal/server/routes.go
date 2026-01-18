@@ -24,13 +24,13 @@ func (s *FiberServer) RegisterFiberRoutes() {
 		MaxAge:           300,
 	}))
 
-	s.App.Get("/", s.HelloWorldHandler)
+	s.App.Get("/api", s.HelloWorldHandler)
 
-	s.App.Get("/health", s.healthHandler)
+	s.App.Get("/api/health", s.healthHandler)
 
-	s.App.Post("/notify", s.notifyHandler)
+	s.App.Post("/api/notify", s.notifyHandler)
 
-	s.App.Get("/events", s.eventsHandler)
+	s.App.Get("/api/events", s.eventsHandler)
 
 }
 

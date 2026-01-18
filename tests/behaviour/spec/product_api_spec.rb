@@ -2,7 +2,7 @@ require 'rspec'
 require 'httparty'
 
 RSpec.describe 'Products API' do
-  let(:base_url) { 'http://localhost:8080' }
+  let(:base_url) { 'http://localhost:8080/api' }
 
   describe 'GET /products' do
     it 'returns a list of products' do
