@@ -20,5 +20,6 @@ func (r *ProductRoutes) RegisterRoutes(server *server.FiberServer) {
 	group.Get("", r.handler.GetProducts)
 	group.Get("/id/:id", r.handler.GetByID)
 	group.Delete("/id/:id", r.handler.Delete)
+	group.Get("/search", r.handler.FilterProducts)
 
 }

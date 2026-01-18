@@ -77,3 +77,24 @@ func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Pro
 	}
 	return &p, nil
 }
+
+func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, limit, offset int) ([]models.Product, error) {
+	filterparameters := " AND price >= $1 AND price <= $2"
+	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products WHERE 1=1" + filterparameters + " LIMIT $3 OFFSET $4"
+	rows, err := r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.Product
+	for rows.Next() {
+		var p models.Product
+		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.CreatedAt, &p.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, rows.Err()
+}

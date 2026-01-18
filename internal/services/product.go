@@ -3,11 +3,11 @@ package services
 import (
 	"context"
 	"log"
+	"math"
 	"products-api/internal/models"
 	"products-api/internal/repository"
-	"products-api/internal/utils"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/valyala/fasthttp"
 )
 
 // ProductService handles product business logic
@@ -15,13 +15,28 @@ type ProductService struct {
 	repo *repository.ProductRepository
 }
 
+func (s *ProductService) FilterProducts(ctx *fasthttp.RequestCtx, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
+	var err error
+	if limit == 0 {
+		log.Printf("Limit not provided, setting default limit to 20")
+		limit = 20
+	}
+	if maxPrice == 0 {
+		maxPrice = math.MaxFloat64
+		log.Printf("MaxPrice not provided, setting default maxPrice to %f", maxPrice)
+	}
+	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, limit: %d, offset: %d", minPrice, maxPrice, limit, offset)
+	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
+	if err != nil {
+		log.Printf("Error filtering products: %v", err)
+		return nil, err
+	}
+	log.Printf("Filtered products: %v", products)
+	return products, nil
+}
+
 func (s *ProductService) Create(context context.Context, product *models.Product) error {
 	var err error
-	err = utils.DataValidator(product)
-	if err != nil {
-		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
-		return err
-	}
 	err = s.repo.Create(context, product)
 	if err != nil {
 		log.Printf("Error creating product: %v", err)
