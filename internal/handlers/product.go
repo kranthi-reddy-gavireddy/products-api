@@ -40,8 +40,8 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 
 func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
 	pagnation := struct {
-		Limit  int `json:"limit"`
-		Offset int `json:"offset"`
+		Limit  int `query:"limit"`
+		Offset int `query:"offset"`
 	}{}
 	err := c.QueryParser(&pagnation)
 	if err != nil {
@@ -87,11 +87,11 @@ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
 
 func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
 	filter := struct {
-		MinPrice float64 `json:"min_price" validate:"gte=0"`
-		MaxPrice float64 `json:"max_price" validate:"gte=0"`
-		Category string  `json:"category"`
-		Limit    int     `json:"limit" validate:"gte=0"`
-		Offset   int     `json:"offset" validate:"gte=0"`
+		MinPrice float64 `query:"min_price" validate:"gte=0"`
+		MaxPrice float64 `query:"max_price" validate:"gte=0"`
+		Category string  `query:"category"`
+		Limit    int     `query:"limit" validate:"gte=0"`
+		Offset   int     `query:"offset" validate:"gte=0"`
 	}{}
 	err := c.QueryParser(&filter)
 	if err != nil {

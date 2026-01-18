@@ -6,8 +6,6 @@ import (
 	"math"
 	"products-api/internal/models"
 	"products-api/internal/repository"
-
-	"github.com/valyala/fasthttp"
 )
 
 // ProductService handles product business logic
@@ -15,7 +13,7 @@ type ProductService struct {
 	repo *repository.ProductRepository
 }
 
-func (s *ProductService) FilterProducts(ctx *fasthttp.RequestCtx, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
+func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
 	var err error
 	if limit == 0 {
 		log.Printf("Limit not provided, setting default limit to 20")
