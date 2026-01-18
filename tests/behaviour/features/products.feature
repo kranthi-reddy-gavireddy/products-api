@@ -27,7 +27,11 @@ Feature: Product Management
   Scenario: Create a product with invalid data
     When I create a product with invalid data
     Then I should receive an error
-
+  
+  Scenario: Search products with query params
+    When I request to filter products with min_price 5.2, max_price 100, limit 20, offset 0
+    Then I should receive the filtered list of products with status 200
+  
   Scenario: Delete the product created
     When I request to delete the Product that is created
     Then the Product should be deleted with status 202

@@ -103,3 +103,19 @@ Then('the Product should be deleted with status {int}') do |status_code|
   expect(@response.parsed_response['message']).to include('Product deleted successfully')
   expect(@response.parsed_response['message']).to include(Product_ID)
 end
+
+When('I request to filter products with min_price {float}, max_price {float}, limit {int}, offset {int}') do |min_price, max_price, limit, offset|
+  query_params = []
+  query_params << "minPrice=#{min_price}" if min_price > 0
+  query_params << "maxPrice=#{max_price}" if max_price > 0
+  query_params << "limit=#{limit}" if limit > 0
+  query_params << "offset=#{offset}" if offset > 0
+  query_string = query_params.join('&')
+  @response = HTTParty.get("#{BASE_URL}/products/search?#{query_string}")
+end
+
+Then('I should receive the filtered list of products with status {int}') do |status_code|
+  expect(@response.code).to eq(status_code)
+  #expect data to be an array or nil 
+  expect(@response.parsed_response).to be_an(Array).or be_nil
+end

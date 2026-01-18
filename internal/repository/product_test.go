@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"products-api/internal/models"
+	"regexp"
 	"testing"
 	"time"
 
@@ -98,9 +100,9 @@ func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
 		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
 	}
 
-	suite.mock.ExpectQuery("SELECT .* FROM products$").WillReturnRows(rows)
+	suite.mock.ExpectQuery("SELECT .* FROM products LIMIT .* OFFSET .*").WillReturnRows(rows)
 
-	result, err := suite.repo.GetAll(context.Background())
+	result, err := suite.repo.GetAll(context.Background(), 20, 0)
 	suite.NoError(err, "expected no error while getting all products")
 	suite.Len(result, 2, "expected two products")
 	// Note: Exact match may fail due to time fields, so check key fields
@@ -125,6 +127,40 @@ func (suite *ProductRepositoryTestSuite) TestDeleteProduct() {
 	deletedProduct, err := suite.repo.GetByID(context.Background(), "1")
 	suite.Error(err, "expected error while retrieving deleted product")
 	suite.Nil(deletedProduct, "expected no product to be returned after deletion")
+}
+
+func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
+	expectedProducts := []models.Product{
+		{BaseModel: models.BaseModel{ID: "1"}, Name: "Product 1", Price: 15.0, SellerID: "seller1", Quantity: 5},
+		{BaseModel: models.BaseModel{ID: "2"}, Name: "Product 2", Price: 18.0, SellerID: "seller2", Quantity: 3},
+	}
+
+	rows := sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"})
+	for _, p := range expectedProducts {
+		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
+	}
+	query := `
+           SELECT id, name, price, seller_id, quantity, created_at, updated_at
+           FROM products
+           WHERE 1=1 AND
+		   price >= $1 AND price <= $2
+           LIMIT $3 OFFSET $4
+		`
+	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
+		WithArgs(15.0, 20.0, 20, 0).WillReturnRows(rows)
+	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, "", 20, 0)
+	fmt.Println(result)
+	suite.NoError(err, "expected no error while filtering products by params")
+	suite.Len(result, 2, "expected two products")
+	// Note: Exact match may fail due to time fields, so check key fields
+	for i, p := range result {
+		assert.Equal(suite.T(), expectedProducts[i].ID, p.ID)
+		assert.Equal(suite.T(), expectedProducts[i].Name, p.Name)
+		assert.Equal(suite.T(), expectedProducts[i].Price, p.Price)
+		assert.Equal(suite.T(), expectedProducts[i].SellerID, p.SellerID)
+		assert.Equal(suite.T(), expectedProducts[i].Quantity, p.Quantity)
+	}
+	suite.NoError(suite.mock.ExpectationsWereMet())
 }
 
 func TestProductRepositoryTestSuite(t *testing.T) {
