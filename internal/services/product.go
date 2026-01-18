@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"log"
-	"math"
 	"products-api/internal/models"
 	"products-api/internal/repository"
 )
@@ -15,14 +14,6 @@ type ProductService struct {
 
 func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
 	var err error
-	if limit == 0 {
-		log.Printf("Limit not provided, setting default limit to 20")
-		limit = 20
-	}
-	if maxPrice == 0 {
-		maxPrice = math.MaxFloat64
-		log.Printf("MaxPrice not provided, setting default maxPrice to %f", maxPrice)
-	}
 	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, limit: %d, offset: %d", minPrice, maxPrice, limit, offset)
 	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
 	if err != nil {
@@ -45,10 +36,6 @@ func (s *ProductService) Create(context context.Context, product *models.Product
 // GetProducts retrieves all products
 func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]models.Product, error) {
 	var err error
-	if limit == 0 {
-		log.Printf("Limit not provided, setting default limit to 20")
-		limit = 20
-	}
 	log.Printf("Retrieving products with limit %d and offset %d", limit, offset)
 	products, err := s.repo.GetAll(ctx, limit, offset)
 

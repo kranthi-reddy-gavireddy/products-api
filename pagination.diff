@@ -1,0 +1,311 @@
+diff --git a/internal/handlers/product.go b/internal/handlers/product.go
+index 77b5ab6..864af4f 100644
+--- a/internal/handlers/product.go
++++ b/internal/handlers/product.go
+@@ -2,8 +2,10 @@ package handlers
+ 
+ import (
+ 	"fmt"
++	"log"
+ 	"products-api/internal/models"
+ 	"products-api/internal/services"
++	"products-api/internal/utils"
+ 
+ 	"github.com/go-playground/validator/v10"
+ 	"github.com/gofiber/fiber/v2"
+@@ -24,12 +26,12 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
+ 	}
+ 	// Set unique ID
+ 	product.SetID()
+-
++	if err := utils.DataValidator(&product); err != nil {
++		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
++		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
++	}
+ 	err := h.productService.Create(c.Context(), &product)
+ 	if err != nil {
+-		if _, ok := err.(validator.ValidationErrors); ok {
+-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+-		}
+ 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create product"})
+ 	}
+ 
+@@ -37,7 +39,16 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
+ }
+ 
+ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
+-	products, err := h.productService.GetProducts(c.Context())
++	pagnation := struct {
++		Limit  int `query:"limit"`
++		Offset int `query:"offset"`
++	}{}
++	err := c.QueryParser(&pagnation)
++	if err != nil {
++		log.Printf("Error parsing query params: %v", err)
++		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
++	}
++	products, err := h.productService.GetProducts(c.Context(), pagnation.Limit, pagnation.Offset)
+ 	if err != nil {
+ 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve products"})
+ 	}
+@@ -73,3 +84,27 @@ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
+ 	msg := fmt.Sprintf("Product deleted successfully %s", id)
+ 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"message": msg, "id": id})
+ }
++
++func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
++	filter := struct {
++		MinPrice float64 `query:"min_price" validate:"gte=0"`
++		MaxPrice float64 `query:"max_price" validate:"gte=0"`
++		Category string  `query:"category"`
++		Limit    int     `query:"limit" validate:"gte=0"`
++		Offset   int     `query:"offset" validate:"gte=0"`
++	}{}
++	err := c.QueryParser(&filter)
++	if err != nil {
++		log.Printf("Error parsing filter query params: %v", err)
++		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid filter query parameters"})
++	}
++	if err := utils.DataValidator(&filter); err != nil {
++		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
++		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
++	}
++	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset)
++	if err != nil {
++		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to filter products"})
++	}
++	return c.JSON(products)
++}
+diff --git a/internal/repository/product.go b/internal/repository/product.go
+index 652a9fd..258d8dd 100644
+--- a/internal/repository/product.go
++++ b/internal/repository/product.go
+@@ -20,9 +20,9 @@ func NewProductRepository(db *sql.DB) *ProductRepository {
+ 	return &ProductRepository{db: db}
+ }
+ 
+-func (r *ProductRepository) GetAll(ctx context.Context) ([]models.Product, error) {
+-	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products"
+-	rows, err := r.db.QueryContext(ctx, query)
++func (r *ProductRepository) GetAll(ctx context.Context, limit, offset int) ([]models.Product, error) {
++	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products LIMIT $1 OFFSET $2"
++	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+@@ -77,3 +77,24 @@ func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Pro
+ 	}
+ 	return &p, nil
+ }
++
++func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, limit, offset int) ([]models.Product, error) {
++	filterparameters := " AND price >= $1 AND price <= $2"
++	query := "SELECT id, name, price, seller_id, quantity, created_at, updated_at FROM products WHERE 1=1" + filterparameters + " LIMIT $3 OFFSET $4"
++	rows, err := r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset)
++	if err != nil {
++		return nil, err
++	}
++	defer rows.Close()
++
++	var products []models.Product
++	for rows.Next() {
++		var p models.Product
++		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.CreatedAt, &p.UpdatedAt)
++		if err != nil {
++			return nil, err
++		}
++		products = append(products, p)
++	}
++	return products, rows.Err()
++}
+diff --git a/internal/repository/product_test.go b/internal/repository/product_test.go
+index b921d54..7905404 100644
+--- a/internal/repository/product_test.go
++++ b/internal/repository/product_test.go
+@@ -3,7 +3,9 @@ package repository
+ import (
+ 	"context"
+ 	"database/sql"
++	"fmt"
+ 	"products-api/internal/models"
++	"regexp"
+ 	"testing"
+ 	"time"
+ 
+@@ -98,9 +100,9 @@ func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
+ 		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
+ 	}
+ 
+-	suite.mock.ExpectQuery("SELECT .* FROM products$").WillReturnRows(rows)
++	suite.mock.ExpectQuery("SELECT .* FROM products LIMIT .* OFFSET .*").WillReturnRows(rows)
+ 
+-	result, err := suite.repo.GetAll(context.Background())
++	result, err := suite.repo.GetAll(context.Background(), 20, 0)
+ 	suite.NoError(err, "expected no error while getting all products")
+ 	suite.Len(result, 2, "expected two products")
+ 	// Note: Exact match may fail due to time fields, so check key fields
+@@ -127,6 +129,40 @@ func (suite *ProductRepositoryTestSuite) TestDeleteProduct() {
+ 	suite.Nil(deletedProduct, "expected no product to be returned after deletion")
+ }
+ 
++func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
++	expectedProducts := []models.Product{
++		{BaseModel: models.BaseModel{ID: "1"}, Name: "Product 1", Price: 15.0, SellerID: "seller1", Quantity: 5},
++		{BaseModel: models.BaseModel{ID: "2"}, Name: "Product 2", Price: 18.0, SellerID: "seller2", Quantity: 3},
++	}
++
++	rows := sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"})
++	for _, p := range expectedProducts {
++		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
++	}
++	query := `
++           SELECT id, name, price, seller_id, quantity, created_at, updated_at
++           FROM products
++           WHERE 1=1 AND
++		   price >= $1 AND price <= $2
++           LIMIT $3 OFFSET $4
++		`
++	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
++		WithArgs(15.0, 20.0, 20, 0).WillReturnRows(rows)
++	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, "", 20, 0)
++	fmt.Println(result)
++	suite.NoError(err, "expected no error while filtering products by params")
++	suite.Len(result, 2, "expected two products")
++	// Note: Exact match may fail due to time fields, so check key fields
++	for i, p := range result {
++		assert.Equal(suite.T(), expectedProducts[i].ID, p.ID)
++		assert.Equal(suite.T(), expectedProducts[i].Name, p.Name)
++		assert.Equal(suite.T(), expectedProducts[i].Price, p.Price)
++		assert.Equal(suite.T(), expectedProducts[i].SellerID, p.SellerID)
++		assert.Equal(suite.T(), expectedProducts[i].Quantity, p.Quantity)
++	}
++	suite.NoError(suite.mock.ExpectationsWereMet())
++}
++
+ func TestProductRepositoryTestSuite(t *testing.T) {
+ 	suite.Run(t, new(ProductRepositoryTestSuite))
+ }
+diff --git a/internal/routes/product_routes.go b/internal/routes/product_routes.go
+index e5fcb08..7b6a4aa 100644
+--- a/internal/routes/product_routes.go
++++ b/internal/routes/product_routes.go
+@@ -20,5 +20,6 @@ func (r *ProductRoutes) RegisterRoutes(server *server.FiberServer) {
+ 	group.Get("", r.handler.GetProducts)
+ 	group.Get("/id/:id", r.handler.GetByID)
+ 	group.Delete("/id/:id", r.handler.Delete)
++	group.Get("/search", r.handler.FilterProducts)
+ 
+ }
+diff --git a/internal/services/product.go b/internal/services/product.go
+index 4a1d686..2d52d09 100644
+--- a/internal/services/product.go
++++ b/internal/services/product.go
+@@ -3,11 +3,9 @@ package services
+ import (
+ 	"context"
+ 	"log"
++	"math"
+ 	"products-api/internal/models"
+ 	"products-api/internal/repository"
+-	"products-api/internal/utils"
+-
+-	"github.com/go-playground/validator/v10"
+ )
+ 
+ // ProductService handles product business logic
+@@ -15,13 +13,28 @@ type ProductService struct {
+ 	repo *repository.ProductRepository
+ }
+ 
+-func (s *ProductService) Create(context context.Context, product *models.Product) error {
++func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
+ 	var err error
+-	err = utils.DataValidator(product)
++	if limit == 0 {
++		log.Printf("Limit not provided, setting default limit to 20")
++		limit = 20
++	}
++	if maxPrice == 0 {
++		maxPrice = math.MaxFloat64
++		log.Printf("MaxPrice not provided, setting default maxPrice to %f", maxPrice)
++	}
++	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, limit: %d, offset: %d", minPrice, maxPrice, limit, offset)
++	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
+ 	if err != nil {
+-		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
+-		return err
++		log.Printf("Error filtering products: %v", err)
++		return nil, err
+ 	}
++	log.Printf("Filtered products: %v", products)
++	return products, nil
++}
++
++func (s *ProductService) Create(context context.Context, product *models.Product) error {
++	var err error
+ 	err = s.repo.Create(context, product)
+ 	if err != nil {
+ 		log.Printf("Error creating product: %v", err)
+@@ -30,8 +43,15 @@ func (s *ProductService) Create(context context.Context, product *models.Product
+ }
+ 
+ // GetProducts retrieves all products
+-func (s *ProductService) GetProducts(ctx context.Context) ([]models.Product, error) {
+-	products, err := s.repo.GetAll(ctx)
++func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]models.Product, error) {
++	var err error
++	if limit == 0 {
++		log.Printf("Limit not provided, setting default limit to 20")
++		limit = 20
++	}
++	log.Printf("Retrieving products with limit %d and offset %d", limit, offset)
++	products, err := s.repo.GetAll(ctx, limit, offset)
++
+ 	if err != nil {
+ 		log.Printf("Error retrieving products: %v", err)
+ 		return nil, err
+diff --git a/tests/behaviour/features/products.feature b/tests/behaviour/features/products.feature
+index c7d98bd..cbb275a 100644
+--- a/tests/behaviour/features/products.feature
++++ b/tests/behaviour/features/products.feature
+@@ -27,7 +27,11 @@ Feature: Product Management
+   Scenario: Create a product with invalid data
+     When I create a product with invalid data
+     Then I should receive an error
+-
++  
++  Scenario: Search products with query params
++    When I request to filter products with min_price 5.2, max_price 100, limit 20, offset 0
++    Then I should receive the filtered list of products with status 200
++  
+   Scenario: Delete the product created
+     When I request to delete the Product that is created
+-    Then the Product should be deleted with status 202
+\ No newline at end of file
++    Then the Product should be deleted with status 202
+diff --git a/tests/behaviour/features/step_definitions/product_steps.rb b/tests/behaviour/features/step_definitions/product_steps.rb
+index 2a11b1c..9e496e2 100644
+--- a/tests/behaviour/features/step_definitions/product_steps.rb
++++ b/tests/behaviour/features/step_definitions/product_steps.rb
+@@ -102,4 +102,20 @@ Then('the Product should be deleted with status {int}') do |status_code|
+   #return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"message": `Product deleted successfully %s`, "id": id})
+   expect(@response.parsed_response['message']).to include('Product deleted successfully')
+   expect(@response.parsed_response['message']).to include(Product_ID)
++end
++
++When('I request to filter products with min_price {float}, max_price {float}, limit {int}, offset {int}') do |min_price, max_price, limit, offset|
++  query_params = []
++  query_params << "minPrice=#{min_price}" if min_price > 0
++  query_params << "maxPrice=#{max_price}" if max_price > 0
++  query_params << "limit=#{limit}" if limit > 0
++  query_params << "offset=#{offset}" if offset > 0
++  query_string = query_params.join('&')
++  @response = HTTParty.get("#{BASE_URL}/products/search?#{query_string}")
++end
++
++Then('I should receive the filtered list of products with status {int}') do |status_code|
++  expect(@response.code).to eq(status_code)
++  #expect data to be an array or nil 
++  expect(@response.parsed_response).to be_an(Array).or be_nil
+ end
+\ No newline at end of file

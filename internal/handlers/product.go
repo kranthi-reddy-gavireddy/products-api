@@ -39,15 +39,13 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
-	pagnation := struct {
-		Limit  int `query:"limit"`
-		Offset int `query:"offset"`
-	}{}
+	pagnation := models.PageNation{}
 	err := c.QueryParser(&pagnation)
 	if err != nil {
 		log.Printf("Error parsing query params: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
 	}
+	pagnation.ApplyDefaults()
 	products, err := h.productService.GetProducts(c.Context(), pagnation.Limit, pagnation.Offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve products"})
@@ -86,13 +84,7 @@ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
-	filter := struct {
-		MinPrice float64 `query:"min_price" validate:"gte=0"`
-		MaxPrice float64 `query:"max_price" validate:"gte=0"`
-		Category string  `query:"category"`
-		Limit    int     `query:"limit" validate:"gte=0"`
-		Offset   int     `query:"offset" validate:"gte=0"`
-	}{}
+	filter := models.FilterParams{}
 	err := c.QueryParser(&filter)
 	if err != nil {
 		log.Printf("Error parsing filter query params: %v", err)
@@ -102,6 +94,7 @@ func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
 		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+	filter.ApplyDefaults()
 	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to filter products"})
