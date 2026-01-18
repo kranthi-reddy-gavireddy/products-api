@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"products-api/internal/models"
+	"regexp"
 	"testing"
 	"time"
 
@@ -138,9 +139,15 @@ func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
 	for _, p := range expectedProducts {
 		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
 	}
-
-	suite.mock.ExpectQuery("SELECT .* FROM products WHERE 1=1 AND price >= .* AND price <= .* LIMIT .* OFFSET .*").WillReturnRows(rows)
-
+	query := `
+           SELECT id, name, price, seller_id, quantity, created_at, updated_at
+           FROM products
+           WHERE 1=1 AND
+		   price >= $1 AND price <= $2
+           LIMIT $3 OFFSET $4
+		`
+	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
+		WithArgs(15.0, 20.0, 20, 0).WillReturnRows(rows)
 	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, "", 20, 0)
 	fmt.Println(result)
 	suite.NoError(err, "expected no error while filtering products by params")
@@ -153,6 +160,7 @@ func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
 		assert.Equal(suite.T(), expectedProducts[i].SellerID, p.SellerID)
 		assert.Equal(suite.T(), expectedProducts[i].Quantity, p.Quantity)
 	}
+	suite.NoError(suite.mock.ExpectationsWereMet())
 }
 
 func TestProductRepositoryTestSuite(t *testing.T) {
