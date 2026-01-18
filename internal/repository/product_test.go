@@ -98,7 +98,7 @@ func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
 		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
 	}
 
-	suite.mock.ExpectQuery("SELECT .* FROM products$").WillReturnRows(rows)
+	suite.mock.ExpectQuery("SELECT .* FROM products LIMIT .* OFFSET .*").WillReturnRows(rows)
 
 	result, err := suite.repo.GetAll(context.Background(), 20, 0)
 	suite.NoError(err, "expected no error while getting all products")
