@@ -115,7 +115,7 @@ When('I request to filter products with min_price {float}, max_price {float}, li
   query_params << "limit=#{limit}" if limit > 0
   query_params << "offset=#{offset}" if offset > 0
   query_string = query_params.join('&')
-  @response = HTTParty.get("#{BASE_URL}/products/search?#{query_string}")
+  @response = HTTParty.get("#{BASE_URL}/products?#{query_string}")
 end
 
 Then('I should receive the filtered list of products with status {int}') do |status_code|
