@@ -19,6 +19,7 @@ func RunMigrations(db *sql.DB) error {
 		price DECIMAL(10,2) NOT NULL,
 		seller_id VARCHAR(255),
 		quantity INTEGER NOT NULL DEFAULT 0,
+		category VARCHAR(100),
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 		deleted_at TIMESTAMP WITH TIME ZONE
@@ -28,6 +29,7 @@ func RunMigrations(db *sql.DB) error {
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);`,
 	}
 
 	ctx := context.Background()

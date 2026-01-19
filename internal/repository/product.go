@@ -84,7 +84,13 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 		filterparameters += " AND category = $5"
 	}
 	query := "SELECT id, name, price, seller_id, quantity, category, created_at, updated_at FROM products WHERE 1=1" + filterparameters + " ORDER BY created_at DESC LIMIT $3 OFFSET $4"
-	rows, err := r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset, category)
+	var rows *sql.Rows
+	var err error
+	if category != "" {
+		rows, err = r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset, category)
+	} else {
+		rows, err = r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset)
+	}
 	if err != nil {
 		return nil, err
 	}

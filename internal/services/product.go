@@ -14,7 +14,7 @@ type ProductService struct {
 
 func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
 	var err error
-	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, limit: %d, offset: %d", minPrice, maxPrice, limit, offset)
+	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, category: %s, limit: %d, offset: %d", minPrice, maxPrice, category, limit, offset)
 	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
 	if err != nil {
 		log.Printf("Error filtering products: %v", err)
