@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log"
 	"products-api/internal/models"
 	"products-api/internal/repository"
@@ -52,6 +53,10 @@ func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold
 	if err != nil {
 		log.Printf("Error retrieving product by ID: %v", err)
 		return nil, err
+	}
+	if product.Quantity < sold {
+		log.Printf("Insufficient product quantity: available %d, requested %d", product.Quantity, sold)
+		return nil, errors.New("Insufficient product quantity to fulfill the order")
 	}
 	log.Printf("Updating product count for product ID %s, sold: %d", id, sold)
 	err = s.repo.UpdateProductCount(ctx, product, sold)

@@ -5,7 +5,7 @@ import (
 	"log"
 	"products-api/internal/models"
 	"products-api/internal/services"
-	"products-api/internal/utils"
+	"products-api/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"

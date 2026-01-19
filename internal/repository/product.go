@@ -6,12 +6,6 @@ import (
 	"products-api/internal/models"
 )
 
-var (
-	ORDER_CREATE_QUERY = `INSERT INTO orders (id, product_id, quantity, total_price, created_at, updated_at)
-	                      VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id, product_id, quantity, total_price, created_at, updated_at`
-	COUNT_UPDATE_QUERY = `UPDATE products SET quantity = $1, updated_at = NOW() WHERE id = $2`
-)
-
 type ProductRepository struct {
 	db *sql.DB
 }
@@ -41,10 +35,10 @@ func (r *ProductRepository) GetAll(ctx context.Context, limit, offset int) ([]mo
 }
 
 func (r *ProductRepository) Create(ctx context.Context, req *models.Product) error {
-	query := `INSERT INTO products (id, name, price, seller_id, quantity, category, created_at, updated_at)
-	          VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, name, price, seller_id, quantity, category, created_at, updated_at`
+	// query := `INSERT INTO products (id, name, price, seller_id, quantity, category, created_at, updated_at)
+	//           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, name, price, seller_id, quantity, category, created_at, updated_at`
 	var p models.Product
-	err := r.db.QueryRowContext(ctx, query, req.ID, req.Name, req.Price, req.SellerID, req.Quantity, req.Category).Scan(
+	err := r.db.QueryRowContext(ctx, ORDER_CREATE_QUERY, req.ID, req.Name, req.Price, req.SellerID, req.Quantity, req.Category).Scan(
 		&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.Category, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return err
@@ -54,8 +48,8 @@ func (r *ProductRepository) Create(ctx context.Context, req *models.Product) err
 
 func (r *ProductRepository) UpdateProductCount(ctx context.Context, product *models.Product, sold int) error {
 	product.Quantity -= sold
-	query := `UPDATE products SET quantity = $1, updated_at = NOW() WHERE id = $2`
-	_, err := r.db.ExecContext(ctx, query, product.Quantity, product.ID)
+	//query := `UPDATE products SET quantity = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, COUNT_UPDATE_QUERY, product.Quantity, product.ID)
 	if err != nil {
 		return err
 	}
@@ -63,15 +57,15 @@ func (r *ProductRepository) UpdateProductCount(ctx context.Context, product *mod
 }
 
 func (r *ProductRepository) DeleteProduct(ctx context.Context, id string) error {
-	query := "DELETE FROM products WHERE id = $1"
-	_, err := r.db.ExecContext(ctx, query, id)
+	//query := "DELETE FROM products WHERE id = $1"
+	_, err := r.db.ExecContext(ctx, DELETE_PRODUCT_QUERY, id)
 	return err
 }
 
 func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Product, error) {
-	query := "SELECT id, name, price, seller_id, quantity, category, created_at, updated_at FROM products WHERE id = $1"
+	//query := "SELECT id, name, price, seller_id, quantity, category, created_at, updated_at FROM products WHERE id = $1"
 	var p models.Product
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.Category, &p.CreatedAt, &p.UpdatedAt)
+	err := r.db.QueryRowContext(ctx, GET_BY_ID_QUERY, id).Scan(&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.Category, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +77,7 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 	if category != "" {
 		filterparameters += " AND category = $5"
 	}
-	query := "SELECT id, name, price, seller_id, quantity, category, created_at, updated_at FROM products WHERE 1=1" + filterparameters + " ORDER BY created_at DESC LIMIT $3 OFFSET $4"
+	query := GET_ALL_QUERY + filterparameters + " ORDER BY created_at DESC LIMIT $3 OFFSET $4"
 	var rows *sql.Rows
 	var err error
 	if category != "" {
