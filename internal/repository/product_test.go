@@ -80,7 +80,7 @@ func (suite *ProductRepositoryTestSuite) TestUpdateProductCount() {
 	product := MockProduct()
 	product.Quantity = 100
 	suite.mock.ExpectExec("UPDATE .*").WithArgs(95, "1").WillReturnResult(sqlmock.NewResult(1, 1))
-	suite.mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs("1").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow("1", "Test Product", 9.99, "", 95, fixedTime, fixedTime))
+	suite.mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs("1").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "category", "created_at", "updated_at"}).AddRow("1", "Test Product", 9.99, "", 95, "Category1", fixedTime, fixedTime))
 	err := suite.repo.UpdateProductCount(context.Background(), &product, 5)
 	suite.NoError(err, "expected no error while updating product count")
 	assert.Equal(suite.T(), 95, product.Quantity, "expected product quantity to be updated correctly")
