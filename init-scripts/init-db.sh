@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(255) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     seller_id VARCHAR(255),
+    category VARCHAR(100),
     quantity INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -25,6 +26,9 @@ CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id);
 
 -- Create index on created_at for sorting
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);
+
+-- Create index on category for filtering
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 "
 
 echo "Database tables created successfully"

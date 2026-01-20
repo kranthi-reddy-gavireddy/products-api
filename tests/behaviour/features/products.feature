@@ -8,7 +8,7 @@ Feature: Product Management
             Then I should receive 200 status with json payload
 
   Scenario: Create a new product
-    When I create a product with name "Test Product", price 10.99, seller_id "seller123", quantity 5
+    When I create a product with name "Test Product", price 10.99, seller_id "seller123", quantity 5, category "Category1"
     Then the product should be created successfully
     And I should receive the product details
   

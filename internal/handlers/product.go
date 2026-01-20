@@ -5,7 +5,7 @@ import (
 	"log"
 	"products-api/internal/models"
 	"products-api/internal/services"
-	"products-api/internal/utils"
+	"products-api/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -39,15 +39,13 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
-	pagnation := struct {
-		Limit  int `json:"limit"`
-		Offset int `json:"offset"`
-	}{}
+	pagnation := models.PageNation{}
 	err := c.QueryParser(&pagnation)
 	if err != nil {
 		log.Printf("Error parsing query params: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
 	}
+	pagnation.ApplyDefaults()
 	products, err := h.productService.GetProducts(c.Context(), pagnation.Limit, pagnation.Offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve products"})
@@ -86,13 +84,7 @@ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
-	filter := struct {
-		MinPrice float64 `json:"min_price" validate:"gte=0"`
-		MaxPrice float64 `json:"max_price" validate:"gte=0"`
-		Category string  `json:"category"`
-		Limit    int     `json:"limit" validate:"gte=0"`
-		Offset   int     `json:"offset" validate:"gte=0"`
-	}{}
+	filter := models.FilterParams{}
 	err := c.QueryParser(&filter)
 	if err != nil {
 		log.Printf("Error parsing filter query params: %v", err)
@@ -102,6 +94,7 @@ func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
 		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+	filter.ApplyDefaults()
 	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to filter products"})

@@ -21,12 +21,13 @@ Then('I should receive a list of products') do
   expect(@response.parsed_response).to be_an(Array)
 end
 
-When('I create a product with name {string}, price {float}, seller_id {string}, quantity {int}') do |name, price, seller_id, quantity|
+When('I create a product with name {string}, price {float}, seller_id {string}, quantity {int}, category {string}') do |name, price, seller_id, quantity, category|
   @product_data = {
     name: name,
     price: price,
     seller_id: seller_id,
-    quantity: quantity
+    quantity: quantity,
+    category: category
   }
   @response = HTTParty.post("#{BASE_URL}/products",
                             body: @product_data.to_json,
@@ -44,6 +45,9 @@ Then('I should receive the product details') do
   expect(@response.parsed_response).to have_key('id')
   expect(@response.parsed_response['name']).to eq(@product_data[:name])
   expect(@response.parsed_response['price']).to eq(@product_data[:price])
+  expect(@response.parsed_response['seller_id']).to eq(@product_data[:seller_id])
+  expect(@response.parsed_response['quantity']).to eq(@product_data[:quantity])
+  expect(@response.parsed_response['category']).to eq(@product_data[:category])
 end
 
 When('I create a product with invalid data') do
@@ -111,7 +115,7 @@ When('I request to filter products with min_price {float}, max_price {float}, li
   query_params << "limit=#{limit}" if limit > 0
   query_params << "offset=#{offset}" if offset > 0
   query_string = query_params.join('&')
-  @response = HTTParty.get("#{BASE_URL}/products/search?#{query_string}")
+  @response = HTTParty.get("#{BASE_URL}/products?#{query_string}")
 end
 
 Then('I should receive the filtered list of products with status {int}') do |status_code|

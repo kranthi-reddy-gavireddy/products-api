@@ -7,4 +7,5 @@ type Product struct {
 	Price    float64 `json:"price" validate:"required,gt=0"`
 	SellerID string  `json:"seller_id" validate:"required"`
 	Quantity int     `json:"quantity" validate:"required,gt=0,lte=1000"`
+	Category string  `json:"category" validate:"required,min=3,max=100,alphanumspace"`
 }

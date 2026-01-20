@@ -2,12 +2,10 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log"
-	"math"
 	"products-api/internal/models"
 	"products-api/internal/repository"
-
-	"github.com/valyala/fasthttp"
 )
 
 // ProductService handles product business logic
@@ -15,17 +13,9 @@ type ProductService struct {
 	repo *repository.ProductRepository
 }
 
-func (s *ProductService) FilterProducts(ctx *fasthttp.RequestCtx, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
+func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
 	var err error
-	if limit == 0 {
-		log.Printf("Limit not provided, setting default limit to 20")
-		limit = 20
-	}
-	if maxPrice == 0 {
-		maxPrice = math.MaxFloat64
-		log.Printf("MaxPrice not provided, setting default maxPrice to %f", maxPrice)
-	}
-	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, limit: %d, offset: %d", minPrice, maxPrice, limit, offset)
+	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, category: %s, limit: %d, offset: %d", minPrice, maxPrice, category, limit, offset)
 	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
 	if err != nil {
 		log.Printf("Error filtering products: %v", err)
@@ -47,10 +37,6 @@ func (s *ProductService) Create(context context.Context, product *models.Product
 // GetProducts retrieves all products
 func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]models.Product, error) {
 	var err error
-	if limit == 0 {
-		log.Printf("Limit not provided, setting default limit to 20")
-		limit = 20
-	}
 	log.Printf("Retrieving products with limit %d and offset %d", limit, offset)
 	products, err := s.repo.GetAll(ctx, limit, offset)
 
@@ -67,6 +53,10 @@ func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold
 	if err != nil {
 		log.Printf("Error retrieving product by ID: %v", err)
 		return nil, err
+	}
+	if product.Quantity < sold {
+		log.Printf("Insufficient product quantity: available %d, requested %d", product.Quantity, sold)
+		return nil, errors.New("Insufficient product quantity to fulfill the order")
 	}
 	log.Printf("Updating product count for product ID %s, sold: %d", id, sold)
 	err = s.repo.UpdateProductCount(ctx, product, sold)

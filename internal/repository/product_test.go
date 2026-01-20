@@ -27,6 +27,8 @@ func MockProduct() models.Product {
 		Name:      "Test Product",
 		Price:     9.99,
 		Quantity:  100,
+		SellerID:  "Test Seller",
+		Category:  "Test Category",
 	}
 }
 
@@ -53,8 +55,8 @@ func (suite *ProductRepositoryTestSuite) TearDownTest() {
 func setupProductMock(mock sqlmock.Sqlmock) {
 	fixedTime := time.Now()
 	product := MockProduct()
-	mock.ExpectQuery("INSERT INTO products").WithArgs(product.ID, product.Name, product.Price, product.SellerID, product.Quantity).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "", 0, fixedTime, fixedTime))
-	mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs(product.ID).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "", 100, fixedTime, fixedTime))
+	mock.ExpectQuery("INSERT INTO products").WithArgs(product.ID, product.Name, product.Price, product.SellerID, product.Quantity, product.Category).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "category", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "Test Seller", 0, "Test Category", fixedTime, fixedTime))
+	mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs(product.ID).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "category", "created_at", "updated_at"}).AddRow(product.ID, "Test Product", 9.99, "Test Seller", 100, "Test Category", fixedTime, fixedTime))
 }
 
 func (suite *ProductRepositoryTestSuite) TestCreateProduct() {
@@ -78,7 +80,7 @@ func (suite *ProductRepositoryTestSuite) TestUpdateProductCount() {
 	product := MockProduct()
 	product.Quantity = 100
 	suite.mock.ExpectExec("UPDATE .*").WithArgs(95, "1").WillReturnResult(sqlmock.NewResult(1, 1))
-	suite.mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs("1").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"}).AddRow("1", "Test Product", 9.99, "", 95, fixedTime, fixedTime))
+	suite.mock.ExpectQuery("SELECT .* FROM products WHERE .*").WithArgs("1").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "category", "created_at", "updated_at"}).AddRow("1", "Test Product", 9.99, "", 95, "Category1", fixedTime, fixedTime))
 	err := suite.repo.UpdateProductCount(context.Background(), &product, 5)
 	suite.NoError(err, "expected no error while updating product count")
 	assert.Equal(suite.T(), 95, product.Quantity, "expected product quantity to be updated correctly")
@@ -91,16 +93,16 @@ func (suite *ProductRepositoryTestSuite) TestUpdateProductCount() {
 
 func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
 	expectedProducts := []models.Product{
-		{BaseModel: models.BaseModel{ID: "1"}, Name: "Product 1", Price: 10.0, SellerID: "seller1", Quantity: 5},
-		{BaseModel: models.BaseModel{ID: "2"}, Name: "Product 2", Price: 20.0, SellerID: "seller2", Quantity: 3},
+		{BaseModel: models.BaseModel{ID: "1"}, Name: "Product 1", Price: 10.0, SellerID: "seller1", Quantity: 5, Category: "Category1"},
+		{BaseModel: models.BaseModel{ID: "2"}, Name: "Product 2", Price: 20.0, SellerID: "seller2", Quantity: 3, Category: "Category2"},
 	}
 
-	rows := sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"})
+	rows := sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "category", "created_at", "updated_at"})
 	for _, p := range expectedProducts {
-		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
+		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, p.Category, time.Now(), time.Now())
 	}
 
-	suite.mock.ExpectQuery("SELECT .* FROM products LIMIT .* OFFSET .*").WillReturnRows(rows)
+	suite.mock.ExpectQuery("SELECT .* FROM products ORDER BY created_at DESC LIMIT .* OFFSET .*").WillReturnRows(rows)
 
 	result, err := suite.repo.GetAll(context.Background(), 20, 0)
 	suite.NoError(err, "expected no error while getting all products")
@@ -131,24 +133,26 @@ func (suite *ProductRepositoryTestSuite) TestDeleteProduct() {
 
 func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
 	expectedProducts := []models.Product{
-		{BaseModel: models.BaseModel{ID: "1"}, Name: "Product 1", Price: 15.0, SellerID: "seller1", Quantity: 5},
-		{BaseModel: models.BaseModel{ID: "2"}, Name: "Product 2", Price: 18.0, SellerID: "seller2", Quantity: 3},
+		{BaseModel: models.BaseModel{ID: "1"}, Name: "Product 1", Price: 15.0, SellerID: "seller1", Quantity: 5, Category: "Category1"},
+		{BaseModel: models.BaseModel{ID: "2"}, Name: "Product 2", Price: 18.0, SellerID: "seller2", Quantity: 3, Category: "Category2"},
 	}
-
-	rows := sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "created_at", "updated_at"})
+	category := "Category1"
+	rows := sqlmock.NewRows([]string{"id", "name", "price", "seller_id", "quantity", "category", "created_at", "updated_at"})
 	for _, p := range expectedProducts {
-		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, time.Now(), time.Now())
+		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, p.Category, time.Now(), time.Now())
 	}
 	query := `
-           SELECT id, name, price, seller_id, quantity, created_at, updated_at
+           SELECT id, name, price, seller_id, quantity, category, created_at, updated_at
            FROM products
            WHERE 1=1 AND
 		   price >= $1 AND price <= $2
+		   AND category = $5
+		   ORDER BY created_at DESC
            LIMIT $3 OFFSET $4
 		`
 	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
-		WithArgs(15.0, 20.0, 20, 0).WillReturnRows(rows)
-	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, "", 20, 0)
+		WithArgs(15.0, 20.0, 20, 0, category).WillReturnRows(rows)
+	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, category, 20, 0)
 	fmt.Println(result)
 	suite.NoError(err, "expected no error while filtering products by params")
 	suite.Len(result, 2, "expected two products")
