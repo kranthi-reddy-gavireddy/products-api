@@ -12,6 +12,7 @@ import (
 	"products-api/internal/routes"
 	"products-api/internal/server"
 	"products-api/internal/services"
+	"products-api/logger"
 	"products-api/message-broker/listeners"
 	"products-api/middeware"
 	"strconv"
@@ -41,10 +42,10 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := fiberServer.ShutdownWithContext(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
+		logger.Errorf("Server forced to shutdown with error: %v", err)
 	}
 
-	log.Println("Server exiting")
+	logger.Infof("Server exiting")
 
 	// Notify the main goroutine that the shutdown is complete
 	done <- true

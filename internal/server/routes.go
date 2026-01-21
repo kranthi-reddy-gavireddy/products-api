@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"log"
+	"products-api/logger"
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -109,7 +109,7 @@ func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
 			ReceiptHandle: msg.ReceiptHandle,
 		})
 		if delErr != nil {
-			log.Printf("Failed to delete message: %v", delErr)
+			logger.Errorf("Failed to delete message: %v", delErr)
 		}
 	}
 

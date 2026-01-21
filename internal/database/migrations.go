@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"products-api/logger"
 )
 
 // RunMigrations creates the necessary database tables
@@ -42,10 +43,10 @@ func RunMigrations(db *sql.DB) error {
 	// Execute index creation
 	for _, index := range indexes {
 		if _, err := db.ExecContext(ctx, index); err != nil {
-			log.Printf("Warning: failed to create index: %v", err)
+			logger.Warnf("Warning: failed to create index: %v", err)
 		}
 	}
 
-	log.Println("Database migrations completed successfully")
+	logger.Infof("Database migrations completed successfully")
 	return nil
 }

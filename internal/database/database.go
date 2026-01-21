@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"products-api/logger"
 	"strconv"
 	"time"
 
@@ -80,7 +81,7 @@ func waitForDB(connStr string) (*sql.DB, error) {
 			}
 		}
 
-		log.Printf("⏳ waiting for database... (%d/15)\n", i)
+		logger.Infof("⏳ waiting for database... (%d/15)\n", i)
 		time.Sleep(2 * time.Second)
 	}
 
@@ -143,7 +144,7 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	log.Printf("Disconnected from database: %s", database)
+	logger.Infof("Disconnected from database: %s", database)
 	return s.db.Close()
 }
 

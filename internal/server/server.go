@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 
 	"products-api/internal/database"
 	"products-api/internal/services"
+	"products-api/logger"
 )
 
 type FiberServer struct {
@@ -37,7 +37,7 @@ func New() *FiberServer {
 	// Load AWS config
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		log.Printf("unable to load AWS config: %v", err)
+		logger.Errorf("unable to load AWS config: %v", err)
 		// Continue without SNS if config fails
 	}
 
@@ -92,7 +92,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
 	for {
 		select {
 		case <-s.ctx.Done():
-			log.Printf("Stopping message processor for queue: %s", processor.queueURL)
+			logger.Infof("Stopping message processor for queue: %s", processor.queueURL)
 			return
 		default:
 			// Receive messages
@@ -104,7 +104,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
 			})
 
 			if err != nil {
-				log.Printf("Error receiving messages from %s: %v", processor.queueURL, err)
+				logger.Errorf("Error receiving messages from %s: %v", processor.queueURL, err)
 				time.Sleep(5 * time.Second) // Back off on error
 				continue
 			}
@@ -112,7 +112,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
 			// Process messages
 			for _, msg := range result.Messages {
 				if err := processor.handler(&msg); err != nil {
-					log.Printf("Error processing message %s: %v", *msg.MessageId, err)
+					logger.Errorf("Error processing message %s: %v", *msg.MessageId, err)
 					// Don't delete the message if processing failed
 					continue
 				}
@@ -123,7 +123,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
 					ReceiptHandle: msg.ReceiptHandle,
 				})
 				if delErr != nil {
-					log.Printf("Failed to delete message %s: %v", *msg.MessageId, delErr)
+					logger.Errorf("Failed to delete message %s: %v", *msg.MessageId, delErr)
 				}
 			}
 		}
