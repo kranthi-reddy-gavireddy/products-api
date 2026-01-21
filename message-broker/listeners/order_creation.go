@@ -3,8 +3,9 @@ package listeners
 import (
 	"context"
 	"encoding/json"
-	"log"
+	apperrors "products-api/app-errors"
 	"products-api/internal/services"
+	"products-api/logger"
 	"products-api/utils"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -19,14 +20,14 @@ type OrderCreationListener struct {
 
 func HandleOrderCreation(msg *types.Message, service *services.ProductService) error {
 	var orderCreationListener OrderCreationListener
-	log.Printf("OrderCreated Received message: %s", *msg.Body)
+	logger.Infof("Received message for Order Created Topic %s", *msg.Body)
 	err := json.Unmarshal([]byte(*msg.Body), &orderCreationListener)
 	if err != nil {
 		return err
 	}
 	if err := utils.DataValidator(&orderCreationListener); err != nil {
-		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
-		return err
+		logger.Errorf("Validation error: %v", err.(validator.ValidationErrors))
+		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 	_, err = service.UpdateProductCount(context.Background(), orderCreationListener.ProductId, orderCreationListener.Quantity)
 	if err != nil {
