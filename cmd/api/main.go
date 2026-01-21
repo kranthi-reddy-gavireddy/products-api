@@ -13,6 +13,7 @@ import (
 	"products-api/internal/server"
 	"products-api/internal/services"
 	"products-api/message-broker/listeners"
+	"products-api/middeware"
 	"strconv"
 	"syscall"
 	"time"
@@ -52,7 +53,7 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 func main() {
 
 	server := server.New()
-
+	server.App.Use(middeware.ErrorMiddleware())
 	server.RegisterFiberRoutes()
 	dbInstance := database.New().GetDB()
 	productRepo := repository.NewProductRepository(dbInstance)

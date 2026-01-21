@@ -2,8 +2,9 @@ package services
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log"
+	apperrors "products-api/app-errors"
 	"products-api/internal/models"
 	"products-api/internal/repository"
 )
@@ -19,7 +20,7 @@ func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, m
 	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
 	if err != nil {
 		log.Printf("Error filtering products: %v", err)
-		return nil, err
+		return nil, apperrors.DatabaseError()
 	}
 	log.Printf("Filtered products: %v", products)
 	return products, nil
@@ -30,8 +31,10 @@ func (s *ProductService) Create(context context.Context, product *models.Product
 	err = s.repo.Create(context, product)
 	if err != nil {
 		log.Printf("Error creating product: %v", err)
+		return apperrors.DatabaseError()
 	}
-	return err
+	log.Printf("Created product successfully: %v", product)
+	return nil
 }
 
 // GetProducts retrieves all products
@@ -39,10 +42,9 @@ func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]
 	var err error
 	log.Printf("Retrieving products with limit %d and offset %d", limit, offset)
 	products, err := s.repo.GetAll(ctx, limit, offset)
-
 	if err != nil {
 		log.Printf("Error retrieving products: %v", err)
-		return nil, err
+		return nil, apperrors.DatabaseError()
 	}
 	log.Printf("Retrieved %d products %v", len(products), products)
 	return products, nil
@@ -51,18 +53,17 @@ func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]
 func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold int) (*models.Product, error) {
 	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("Error retrieving product by ID: %v", err)
-		return nil, err
+		log.Printf("Error retrieving product by ID %s: %v", id, err)
+		return nil, apperrors.DatabaseError()
 	}
 	if product.Quantity < sold {
-		log.Printf("Insufficient product quantity: available %d, requested %d", product.Quantity, sold)
-		return nil, errors.New("Insufficient product quantity to fulfill the order")
+		return nil, apperrors.BadRequestError(fmt.Sprintf(apperrors.INSUFFICIENT_QUANTITY, id))
 	}
 	log.Printf("Updating product count for product ID %s, sold: %d", id, sold)
 	err = s.repo.UpdateProductCount(ctx, product, sold)
 	if err != nil {
-		log.Printf("Error updating product count: %v", err)
-		return nil, err
+		log.Printf("Error updating product count for product ID %s: %v", id, err)
+		return nil, apperrors.DatabaseError()
 	}
 	log.Printf("Updated product count successfully for product  %v", product)
 	return product, nil
@@ -71,8 +72,8 @@ func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold
 func (s *ProductService) GetByID(ctx context.Context, id string) (*models.Product, error) {
 	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("Error retrieving product by ID: %v", err)
-		return nil, err
+		log.Printf("Error retrieving product by ID %s: %v", id, err)
+		return nil, apperrors.DatabaseError()
 	}
 	log.Printf("Retrieved product by ID %s: %v", id, product)
 	return product, nil
@@ -81,14 +82,14 @@ func (s *ProductService) GetByID(ctx context.Context, id string) (*models.Produc
 func (s *ProductService) Delete(ctx context.Context, id string) error {
 	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("Error retrieving product by ID before deletion: %v", err)
-		return err
+		log.Printf("Error retrieving product by ID %s: %v", id, err)
+		return apperrors.DatabaseError()
 	}
 	log.Printf("Deleting product: %v", product)
 	err = s.repo.DeleteProduct(ctx, id)
 	if err != nil {
-		log.Printf("Error deleting product by ID: %v", err)
-		return err
+		log.Printf("Error deleting product by ID %s: %v", id, err)
+		return apperrors.DatabaseError()
 	}
 	log.Printf("Deleted product by ID %s", id)
 	return nil
