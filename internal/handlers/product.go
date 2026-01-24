@@ -5,7 +5,9 @@ import (
 	apperrors "products-api/app-errors"
 	"products-api/internal/models"
 	"products-api/internal/services"
+	"products-api/logger"
 	"products-api/utils"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -91,9 +93,30 @@ func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 	filter.ApplyDefaults()
-	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset)
+	var sortClauses []models.SortClause
+	if filter.Sort != "" {
+		err, sortClauses = sortingParser(filter.Sort)
+	}
+	if err != nil {
+		return err
+	}
+	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
 	if err != nil {
 		return err
 	}
 	return c.JSON(products)
+}
+
+func sortingParser(sortField string) (error, []models.SortClause) {
+	var sortClauses []models.SortClause
+	for _, data := range strings.Split(sortField, ",") {
+		logger.Infof("Field is %v", data)
+		if sortClause, ok := utils.SortMapper[data]; ok {
+			sortClauses = append(sortClauses, sortClause)
+		} else {
+			return apperrors.BadRequestError(fmt.Sprintf(apperrors.INVALID_SORT_FIELD, sortField)), nil
+		}
+	}
+
+	return nil, sortClauses
 }
