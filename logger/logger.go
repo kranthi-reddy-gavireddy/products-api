@@ -64,9 +64,19 @@ func logger() ZeroLogger {
 	}
 
 	zerolog.TimeFieldFormat = time.RFC1123Z
-	baseLogger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+	baseLogger := baseLogger()
 	SetLogger(&baseLogger)
 	return loggerInstance
+}
+
+func baseLogger() zerolog.Logger {
+	return zerolog.New(os.Stderr).
+		With().
+		Str("service", "products-api").
+		Str("env", os.Getenv("ENV")).
+		Str("version", os.Getenv("APP_VERSION")).
+		Timestamp().
+		Logger()
 }
 
 /*
@@ -78,6 +88,11 @@ func InvalidArg(argName string) {
 		Error().
 		Str("arg", argName).
 		Msg(invalidArgMessage)
+}
+
+func WithCorrelationID(cid string) {
+	logger := baseLogger().With().Str("cid", cid).Logger()
+	SetLogger(&logger)
 }
 
 func InvalidArgValue(argName string, argValue interface{}) {

@@ -1,0 +1,999 @@
+diff --git a/app-errors/app_error.go b/app-errors/app_error.go
+new file mode 100644
+index 0000000..1e79989
+--- /dev/null
++++ b/app-errors/app_error.go
+@@ -0,0 +1,74 @@
++package apperrors
++
++import "net/http"
++
++type AppError struct {
++	Code       string      `json:"code"`
++	Message    string      `json:"message"`
++	Details    interface{} `json:"details,omitempty"`
++	HTTPStatus int         `json:"-"`
++}
++
++func (e *AppError) Error() string {
++	return e.Message
++}
++
++func ValidationError(details interface{}) *AppError {
++	return &AppError{
++		Code:       ValidationErrorCode,
++		Message:    VALIDATION_ERROR_MSG,
++		Details:    details,
++		HTTPStatus: http.StatusBadRequest,
++	}
++}
++
++func NotFoundError(details interface{}) *AppError {
++	return &AppError{
++		Code:       NotFoundErrorCode,
++		Message:    NOT_FOUND_ERROR_MSG,
++		Details:    details,
++		HTTPStatus: http.StatusNotFound,
++	}
++}
++
++func InternalServerError(details interface{}) *AppError {
++	return &AppError{
++		Code:       InternalErrorCode,
++		Message:    INTERNAL_ERROR_MSG,
++		Details:    details,
++		HTTPStatus: http.StatusInternalServerError,
++	}
++}
++
++func UnauthorizedError(details interface{}) *AppError {
++	return &AppError{
++		Code:       UnauthorizedErrorCode,
++		Message:    UNAUTHORIZED_ERROR_MSG,
++		HTTPStatus: http.StatusUnauthorized,
++	}
++}
++
++func ForbiddenError(details interface{}) *AppError {
++	return &AppError{
++		Code:       ForbiddenErrorCode,
++		Message:    FORBIDDEN_ERROR_MSG,
++		HTTPStatus: http.StatusForbidden,
++	}
++}
++
++func DatabaseError() *AppError {
++	return &AppError{
++		Code:       DatabaseErrorCode,
++		Message:    DATABASE_ERROR_MSG,
++		HTTPStatus: http.StatusInternalServerError,
++	}
++}
++
++func BadRequestError(details interface{}) *AppError {
++	return &AppError{
++		Code:       BadRequestErrorCode,
++		Message:    BAD_REQUEST_MSG,
++		Details:    details,
++		HTTPStatus: http.StatusBadRequest,
++	}
++}
+diff --git a/app-errors/messages.go b/app-errors/messages.go
+new file mode 100644
+index 0000000..c1d6772
+--- /dev/null
++++ b/app-errors/messages.go
+@@ -0,0 +1,25 @@
++package apperrors
++
++const (
++	BadRequestErrorCode    = "BAD_REQUEST"
++	ValidationErrorCode    = "VALIDATION_ERROR"
++	NotFoundErrorCode      = "NOT_FOUND"
++	InternalErrorCode      = "INTERNAL_ERROR"
++	UnauthorizedErrorCode  = "UNAUTHORIZED"
++	ForbiddenErrorCode     = "FORBIDDEN"
++	DatabaseErrorCode      = "DATABASE_ERROR"
++	BAD_REQUEST_MSG        = "Bad request"
++	VALIDATION_ERROR_MSG   = "Validation failed"
++	NOT_FOUND_ERROR_MSG    = "Resource not found"
++	INTERNAL_ERROR_MSG     = "Internal server error"
++	UNAUTHORIZED_ERROR_MSG = "Unauthorized access"
++	FORBIDDEN_ERROR_MSG    = "Forbidden access"
++	DATABASE_ERROR_MSG     = "Database error"
++)
++
++const (
++	PRODUCT_NOT_FOUND     = "Product not found with the given ID %s"
++	INVALID_PARAMS        = "%s Cannot be an empty value"
++	INSUFFICIENT_QUANTITY = "Insufficient product quantity available for product ID %s"
++	INVALID_SORT_FIELD    = "%s is not valid field for sorting"
++)
+diff --git a/cmd/api/main.go b/cmd/api/main.go
+index 1fd29b8..664546f 100644
+--- a/cmd/api/main.go
++++ b/cmd/api/main.go
+@@ -12,7 +12,9 @@ import (
+ 	"products-api/internal/routes"
+ 	"products-api/internal/server"
+ 	"products-api/internal/services"
++	"products-api/logger"
+ 	"products-api/message-broker/listeners"
++	"products-api/middeware"
+ 	"strconv"
+ 	"syscall"
+ 	"time"
+@@ -40,10 +42,10 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
+ 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+ 	defer cancel()
+ 	if err := fiberServer.ShutdownWithContext(ctx); err != nil {
+-		log.Printf("Server forced to shutdown with error: %v", err)
++		logger.Errorf("Server forced to shutdown with error: %v", err)
+ 	}
+ 
+-	log.Println("Server exiting")
++	logger.Infof("Server exiting")
+ 
+ 	// Notify the main goroutine that the shutdown is complete
+ 	done <- true
+@@ -52,7 +54,7 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
+ func main() {
+ 
+ 	server := server.New()
+-
++	server.App.Use(middeware.ErrorMiddleware())
+ 	server.RegisterFiberRoutes()
+ 	dbInstance := database.New().GetDB()
+ 	productRepo := repository.NewProductRepository(dbInstance)
+diff --git a/go.mod b/go.mod
+index 0d0cc1d..e541cac 100644
+--- a/go.mod
++++ b/go.mod
+@@ -83,6 +83,7 @@ require (
+ 	github.com/pkg/errors v0.9.1 // indirect
+ 	github.com/pmezard/go-difflib v1.0.0 // indirect
+ 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
++	github.com/rs/zerolog v1.34.0
+ 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
+ 	github.com/sirupsen/logrus v1.9.3 // indirect
+ 	github.com/tklauser/go-sysconf v0.3.12 // indirect
+diff --git a/go.sum b/go.sum
+index b2d649f..dbab129 100644
+--- a/go.sum
++++ b/go.sum
+@@ -56,6 +56,7 @@ github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
+ github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
+ github.com/containerd/platforms v0.2.1 h1:zvwtM3rz2YHPQsF2CHYM8+KtB5dvhISiXh5ZpSBQv6A=
+ github.com/containerd/platforms v0.2.1/go.mod h1:XHCb+2/hzowdiut9rkudds9bE5yJ7npe7dG/wG+uFPw=
++github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
+ github.com/cpuguy83/dockercfg v0.3.2 h1:DlJTyZGBDlXqUZ2Dk2Q3xHs/FtnooJJVaad2S9GKorA=
+ github.com/cpuguy83/dockercfg v0.3.2/go.mod h1:sugsbF4//dDlL/i+S+rtpIWp+5h0BHJHfjj5/jFyUJc=
+ github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
+@@ -90,6 +91,7 @@ github.com/go-playground/universal-translator v0.18.1 h1:Bcnm0ZwsGyWbCzImXv+pAJn
+ github.com/go-playground/universal-translator v0.18.1/go.mod h1:xekY+UJKNuX9WP91TpwSH2VMlDf28Uj24BCp08ZFTUY=
+ github.com/go-playground/validator/v10 v10.30.1 h1:f3zDSN/zOma+w6+1Wswgd9fLkdwy06ntQJp0BBvFG0w=
+ github.com/go-playground/validator/v10 v10.30.1/go.mod h1:oSuBIQzuJxL//3MelwSLD5hc2Tu889bF0Idm9Dg26cM=
++github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
+ github.com/gofiber/fiber/v2 v2.52.10 h1:jRHROi2BuNti6NYXmZ6gbNSfT3zj/8c0xy94GOU5elY=
+ github.com/gofiber/fiber/v2 v2.52.10/go.mod h1:YEcBbO/FB+5M1IZNBP9FO3J9281zgPAreiI1oqg8nDw=
+ github.com/google/go-cmp v0.5.6/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+@@ -124,8 +126,11 @@ github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ
+ github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
+ github.com/magiconair/properties v1.8.10 h1:s31yESBquKXCV9a/ScB3ESkOjUYYv+X0rg8SYxI99mE=
+ github.com/magiconair/properties v1.8.10/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
++github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
+ github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
+ github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
++github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
++github.com/mattn/go-isatty v0.0.19/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
+ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+ github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
+ github.com/mattn/go-runewidth v0.0.19 h1:v++JhqYnZuu5jSKrk9RbgF5v4CGUjqRfBm05byFGLdw=
+@@ -162,6 +167,9 @@ github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c h1:ncq/mPwQF
+ github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=
+ github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
+ github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
++github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
++github.com/rs/zerolog v1.34.0 h1:k43nTLIwcTVQAncfCw4KZ2VY6ukYoZaBPNOE8txlOeY=
++github.com/rs/zerolog v1.34.0/go.mod h1:bJsvje4Z08ROH4Nhs5iH600c3IkWhwp44iRc54W6wYQ=
+ github.com/shirou/gopsutil/v4 v4.25.6 h1:kLysI2JsKorfaFPcYmcJqbzROzsBWEOAtw6A7dIfqXs=
+ github.com/shirou/gopsutil/v4 v4.25.6/go.mod h1:PfybzyydfZcN+JMMjkF6Zb8Mq1A/VcogFFg7hj50W9c=
+ github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
+@@ -219,9 +227,11 @@ golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3/go.mod h1:h1NjWce9XRLGQEsW7w
+ golang.org/x/sys v0.0.0-20201204225414-ed752295db88/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+ golang.org/x/sys v0.0.0-20210616094352-59db8d763f22/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+ golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
++golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+ golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+ golang.org/x/sys v0.8.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+ golang.org/x/sys v0.11.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
++golang.org/x/sys v0.12.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+ golang.org/x/sys v0.39.0 h1:CvCKL8MeisomCi6qNZ+wbb0DN9E5AATixKsvNtMoMFk=
+ golang.org/x/sys v0.39.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
+ golang.org/x/term v0.37.0 h1:8EGAD0qCmHYZg6J17DvsMy9/wJ7/D/4pV/wfnld5lTU=
+diff --git a/internal/database/database.go b/internal/database/database.go
+index a99e3f5..a452eec 100644
+--- a/internal/database/database.go
++++ b/internal/database/database.go
+@@ -6,6 +6,7 @@ import (
+ 	"fmt"
+ 	"log"
+ 	"os"
++	"products-api/logger"
+ 	"strconv"
+ 	"time"
+ 
+@@ -80,7 +81,7 @@ func waitForDB(connStr string) (*sql.DB, error) {
+ 			}
+ 		}
+ 
+-		log.Printf("⏳ waiting for database... (%d/15)\n", i)
++		logger.Infof("⏳ waiting for database... (%d/15)\n", i)
+ 		time.Sleep(2 * time.Second)
+ 	}
+ 
+@@ -143,7 +144,7 @@ func (s *service) Health() map[string]string {
+ // If the connection is successfully closed, it returns nil.
+ // If an error occurs while closing the connection, it returns the error.
+ func (s *service) Close() error {
+-	log.Printf("Disconnected from database: %s", database)
++	logger.Infof("Disconnected from database: %s", database)
+ 	return s.db.Close()
+ }
+ 
+diff --git a/internal/database/migrations.go b/internal/database/migrations.go
+index 53bdc77..126b322 100644
+--- a/internal/database/migrations.go
++++ b/internal/database/migrations.go
+@@ -5,6 +5,7 @@ import (
+ 	"database/sql"
+ 	"fmt"
+ 	"log"
++	"products-api/logger"
+ )
+ 
+ // RunMigrations creates the necessary database tables
+@@ -42,10 +43,10 @@ func RunMigrations(db *sql.DB) error {
+ 	// Execute index creation
+ 	for _, index := range indexes {
+ 		if _, err := db.ExecContext(ctx, index); err != nil {
+-			log.Printf("Warning: failed to create index: %v", err)
++			logger.Warnf("Warning: failed to create index: %v", err)
+ 		}
+ 	}
+ 
+-	log.Println("Database migrations completed successfully")
++	logger.Infof("Database migrations completed successfully")
+ 	return nil
+ }
+diff --git a/internal/handlers/product.go b/internal/handlers/product.go
+index e4e75e1..eb4e4e1 100644
+--- a/internal/handlers/product.go
++++ b/internal/handlers/product.go
+@@ -2,10 +2,12 @@ package handlers
+ 
+ import (
+ 	"fmt"
+-	"log"
++	apperrors "products-api/app-errors"
+ 	"products-api/internal/models"
+ 	"products-api/internal/services"
++	"products-api/logger"
+ 	"products-api/utils"
++	"strings"
+ 
+ 	"github.com/go-playground/validator/v10"
+ 	"github.com/gofiber/fiber/v2"
+@@ -22,17 +24,16 @@ func NewProductHandler(productService *services.ProductService) *ProductHandler
+ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
+ 	var product models.Product
+ 	if err := c.BodyParser(&product); err != nil {
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
++		return apperrors.BadRequestError(err.Error())
+ 	}
+ 	// Set unique ID
+ 	product.SetID()
+ 	if err := utils.DataValidator(&product); err != nil {
+-		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
++		return apperrors.ValidationError(err.(validator.ValidationErrors))
+ 	}
+ 	err := h.productService.Create(c.Context(), &product)
+ 	if err != nil {
+-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create product"})
++		return err
+ 	}
+ 
+ 	return c.Status(fiber.StatusCreated).JSON(product)
+@@ -42,13 +43,12 @@ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
+ 	pagnation := models.PageNation{}
+ 	err := c.QueryParser(&pagnation)
+ 	if err != nil {
+-		log.Printf("Error parsing query params: %v", err)
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
++		return apperrors.BadRequestError(err.Error())
+ 	}
+ 	pagnation.ApplyDefaults()
+ 	products, err := h.productService.GetProducts(c.Context(), pagnation.Limit, pagnation.Offset)
+ 	if err != nil {
+-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve products"})
++		return err
+ 	}
+ 	return c.JSON(products)
+ }
+@@ -56,15 +56,15 @@ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
+ func (h *ProductHandler) GetByID(c *fiber.Ctx) error {
+ 	id := c.Params("id")
+ 	if id == "" {
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Product ID is required"})
++		return apperrors.BadRequestError(`Id Cannot be an empty value`)
+ 	}
+ 
+ 	product, err := h.productService.GetByID(c.Context(), id)
+ 	if err != nil {
+-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve product"})
++		return err
+ 	}
+ 	if product == nil {
+-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Product not found"})
++		return apperrors.NotFoundError(fmt.Sprintf(apperrors.PRODUCT_NOT_FOUND, id))
+ 	}
+ 	return c.Status(fiber.StatusOK).JSON(product)
+ }
+@@ -72,12 +72,12 @@ func (h *ProductHandler) GetByID(c *fiber.Ctx) error {
+ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
+ 	id := c.Params("id")
+ 	if id == "" {
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Product ID is required"})
++		return apperrors.BadRequestError(fmt.Sprintf(apperrors.INVALID_PARAMS, "id"))
+ 	}
+ 
+ 	err := h.productService.Delete(c.Context(), id)
+ 	if err != nil {
+-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete product"})
++		return err
+ 	}
+ 	msg := fmt.Sprintf("Product deleted successfully %s", id)
+ 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"message": msg, "id": id})
+@@ -87,17 +87,36 @@ func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
+ 	filter := models.FilterParams{}
+ 	err := c.QueryParser(&filter)
+ 	if err != nil {
+-		log.Printf("Error parsing filter query params: %v", err)
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid filter query parameters"})
++		return apperrors.BadRequestError(err.Error())
+ 	}
+ 	if err := utils.DataValidator(&filter); err != nil {
+-		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
+-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
++		return apperrors.ValidationError(err.(validator.ValidationErrors))
+ 	}
+ 	filter.ApplyDefaults()
+-	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset)
++	var sortClauses []models.SortClause
++	if filter.Sort != "" {
++		err, sortClauses = sortingParser(filter.Sort)
++	}
++	if err != nil {
++		return err
++	}
++	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
+ 	if err != nil {
+-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to filter products"})
++		return err
+ 	}
+ 	return c.JSON(products)
+ }
++
++func sortingParser(sortField string) (error, []models.SortClause) {
++	var sortClauses []models.SortClause
++	for _, data := range strings.Split(sortField, ",") {
++		logger.Infof("Field is %v", data)
++		if sortClause, ok := utils.SortMapper[data]; ok {
++			sortClauses = append(sortClauses, sortClause)
++		} else {
++			return apperrors.BadRequestError(fmt.Sprintf(apperrors.INVALID_SORT_FIELD, sortField)), nil
++		}
++	}
++
++	return nil, sortClauses
++}
+diff --git a/internal/models/utils.go b/internal/models/utils.go
+index 61bfe86..cdbbe6f 100644
+--- a/internal/models/utils.go
++++ b/internal/models/utils.go
+@@ -1,6 +1,13 @@
+ package models
+ 
+-import "math"
++import (
++	"math"
++)
++
++type SortClause struct {
++	Field     string
++	Direction string
++}
+ 
+ type PageNation struct {
+ 	Limit  int `query:"limit" validate:"gte=0"`
+@@ -11,6 +18,7 @@ type FilterParams struct {
+ 	MinPrice float64 `query:"minPrice" validate:"gte=0"`
+ 	MaxPrice float64 `query:"maxPrice" validate:"gte=0"`
+ 	Category string  `query:"category" validate:"omitempty,min=3,max=100,alphanumspace"`
++	Sort     string  `query:"sortField" validate:"omitempty"`
+ 	PageNation
+ }
+ 
+diff --git a/internal/repository/product.go b/internal/repository/product.go
+index e4d4f7d..6fca080 100644
+--- a/internal/repository/product.go
++++ b/internal/repository/product.go
+@@ -72,12 +72,13 @@ func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Pro
+ 	return &p, nil
+ }
+ 
+-func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, limit, offset int) ([]models.Product, error) {
++func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []models.SortClause, limit, offset int) ([]models.Product, error) {
+ 	filterparameters := " AND price >= $1 AND price <= $2"
+ 	if category != "" {
+ 		filterparameters += " AND category = $5"
+ 	}
+-	query := GET_ALL_QUERY + filterparameters + " ORDER BY created_at DESC LIMIT $3 OFFSET $4"
++	sortOrder := sortQueryGenerator(sortClauses)
++	query := GET_ALL_QUERY + filterparameters + sortOrder + " LIMIT $3 OFFSET $4"
+ 	var rows *sql.Rows
+ 	var err error
+ 	if category != "" {
+@@ -101,3 +102,18 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
+ 	}
+ 	return products, rows.Err()
+ }
++
++func sortQueryGenerator(sortClauses []models.SortClause) string {
++	query := ""
++	if len(sortClauses) == 0 {
++		return " ORDER BY created_at DESC "
++	}
++	query = " ORDER BY "
++	for idx, clause := range sortClauses {
++		if idx > 0 {
++			query += " , "
++		}
++		query += clause.Field + " " + clause.Direction
++	}
++	return query
++}
+diff --git a/internal/repository/product_test.go b/internal/repository/product_test.go
+index 478a320..399c8fb 100644
+--- a/internal/repository/product_test.go
++++ b/internal/repository/product_test.go
+@@ -152,7 +152,7 @@ func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
+ 		`
+ 	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
+ 		WithArgs(15.0, 20.0, 20, 0, category).WillReturnRows(rows)
+-	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, category, 20, 0)
++	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, category, []models.SortClause{}, 20, 0)
+ 	fmt.Println(result)
+ 	suite.NoError(err, "expected no error while filtering products by params")
+ 	suite.Len(result, 2, "expected two products")
+diff --git a/internal/server/routes.go b/internal/server/routes.go
+index dfe5ac3..735e964 100644
+--- a/internal/server/routes.go
++++ b/internal/server/routes.go
+@@ -2,7 +2,7 @@ package server
+ 
+ import (
+ 	"context"
+-	"log"
++	"products-api/logger"
+ 
+ 	"github.com/aws/aws-sdk-go-v2/service/sns"
+ 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+@@ -109,7 +109,7 @@ func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
+ 			ReceiptHandle: msg.ReceiptHandle,
+ 		})
+ 		if delErr != nil {
+-			log.Printf("Failed to delete message: %v", delErr)
++			logger.Errorf("Failed to delete message: %v", delErr)
+ 		}
+ 	}
+ 
+diff --git a/internal/server/server.go b/internal/server/server.go
+index 9dd162d..57e24a6 100644
+--- a/internal/server/server.go
++++ b/internal/server/server.go
+@@ -2,7 +2,6 @@ package server
+ 
+ import (
+ 	"context"
+-	"log"
+ 	"sync"
+ 	"time"
+ 
+@@ -14,6 +13,7 @@ import (
+ 
+ 	"products-api/internal/database"
+ 	"products-api/internal/services"
++	"products-api/logger"
+ )
+ 
+ type FiberServer struct {
+@@ -37,7 +37,7 @@ func New() *FiberServer {
+ 	// Load AWS config
+ 	cfg, err := config.LoadDefaultConfig(context.TODO())
+ 	if err != nil {
+-		log.Printf("unable to load AWS config: %v", err)
++		logger.Errorf("unable to load AWS config: %v", err)
+ 		// Continue without SNS if config fails
+ 	}
+ 
+@@ -92,7 +92,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
+ 	for {
+ 		select {
+ 		case <-s.ctx.Done():
+-			log.Printf("Stopping message processor for queue: %s", processor.queueURL)
++			logger.Infof("Stopping message processor for queue: %s", processor.queueURL)
+ 			return
+ 		default:
+ 			// Receive messages
+@@ -104,7 +104,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
+ 			})
+ 
+ 			if err != nil {
+-				log.Printf("Error receiving messages from %s: %v", processor.queueURL, err)
++				logger.Errorf("Error receiving messages from %s: %v", processor.queueURL, err)
+ 				time.Sleep(5 * time.Second) // Back off on error
+ 				continue
+ 			}
+@@ -112,7 +112,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
+ 			// Process messages
+ 			for _, msg := range result.Messages {
+ 				if err := processor.handler(&msg); err != nil {
+-					log.Printf("Error processing message %s: %v", *msg.MessageId, err)
++					logger.Errorf("Error processing message %s: %v", *msg.MessageId, err)
+ 					// Don't delete the message if processing failed
+ 					continue
+ 				}
+@@ -123,7 +123,7 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
+ 					ReceiptHandle: msg.ReceiptHandle,
+ 				})
+ 				if delErr != nil {
+-					log.Printf("Failed to delete message %s: %v", *msg.MessageId, delErr)
++					logger.Errorf("Failed to delete message %s: %v", *msg.MessageId, delErr)
+ 				}
+ 			}
+ 		}
+diff --git a/internal/services/product.go b/internal/services/product.go
+index f4f2391..bd54011 100644
+--- a/internal/services/product.go
++++ b/internal/services/product.go
+@@ -2,10 +2,11 @@ package services
+ 
+ import (
+ 	"context"
+-	"errors"
+-	"log"
++	"fmt"
++	apperrors "products-api/app-errors"
+ 	"products-api/internal/models"
+ 	"products-api/internal/repository"
++	"products-api/logger"
+ )
+ 
+ // ProductService handles product business logic
+@@ -13,15 +14,15 @@ type ProductService struct {
+ 	repo *repository.ProductRepository
+ }
+ 
+-func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int) ([]models.Product, error) {
++func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []models.SortClause) ([]models.Product, error) {
+ 	var err error
+-	log.Printf("Filtering products with minPrice: %f, maxPrice: %f, category: %s, limit: %d, offset: %d", minPrice, maxPrice, category, limit, offset)
+-	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, limit, offset)
++	logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, limit, offset)
++	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, sortClause, limit, offset)
+ 	if err != nil {
+-		log.Printf("Error filtering products: %v", err)
+-		return nil, err
++		logger.Errorf("Error filtering products: %v", err)
++		return nil, apperrors.DatabaseError()
+ 	}
+-	log.Printf("Filtered products: %v", products)
++	logger.Infof("Filtered products: %v", products)
+ 	return products, nil
+ }
+ 
+@@ -29,68 +30,68 @@ func (s *ProductService) Create(context context.Context, product *models.Product
+ 	var err error
+ 	err = s.repo.Create(context, product)
+ 	if err != nil {
+-		log.Printf("Error creating product: %v", err)
++		logger.Errorf("Error creating product: %v", err)
++		return apperrors.DatabaseError()
+ 	}
+-	return err
++	logger.Infof("Created product successfully: %v", product)
++	return nil
+ }
+ 
+ // GetProducts retrieves all products
+ func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]models.Product, error) {
+ 	var err error
+-	log.Printf("Retrieving products with limit %d and offset %d", limit, offset)
++	logger.Infof("Retrieving products with limit %d and offset %d", limit, offset)
+ 	products, err := s.repo.GetAll(ctx, limit, offset)
+-
+ 	if err != nil {
+-		log.Printf("Error retrieving products: %v", err)
+-		return nil, err
++		logger.Errorf("Error retrieving products: %v", err)
++		return nil, apperrors.DatabaseError()
+ 	}
+-	log.Printf("Retrieved %d products %v", len(products), products)
++	logger.Infof("Retrieved %d products %v", len(products), products)
+ 	return products, nil
+ }
+ 
+ func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold int) (*models.Product, error) {
+ 	product, err := s.repo.GetByID(ctx, id)
+ 	if err != nil {
+-		log.Printf("Error retrieving product by ID: %v", err)
+-		return nil, err
++		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
++		return nil, apperrors.DatabaseError()
+ 	}
+ 	if product.Quantity < sold {
+-		log.Printf("Insufficient product quantity: available %d, requested %d", product.Quantity, sold)
+-		return nil, errors.New("Insufficient product quantity to fulfill the order")
++		return nil, apperrors.BadRequestError(fmt.Sprintf(apperrors.INSUFFICIENT_QUANTITY, id))
+ 	}
+-	log.Printf("Updating product count for product ID %s, sold: %d", id, sold)
++	logger.Infof("Updating product count for product ID %s, sold: %d", id, sold)
+ 	err = s.repo.UpdateProductCount(ctx, product, sold)
+ 	if err != nil {
+-		log.Printf("Error updating product count: %v", err)
+-		return nil, err
++		logger.Errorf("Error updating product count for product ID %s: %v", id, err)
++		return nil, apperrors.DatabaseError()
+ 	}
+-	log.Printf("Updated product count successfully for product  %v", product)
++	logger.Infof("Updated product count successfully for product  %v", product)
+ 	return product, nil
+ }
+ 
+ func (s *ProductService) GetByID(ctx context.Context, id string) (*models.Product, error) {
+ 	product, err := s.repo.GetByID(ctx, id)
+ 	if err != nil {
+-		log.Printf("Error retrieving product by ID: %v", err)
+-		return nil, err
++		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
++		return nil, apperrors.DatabaseError()
+ 	}
+-	log.Printf("Retrieved product by ID %s: %v", id, product)
++	logger.Infof("Retrieved product by ID %s: %v", id, product)
+ 	return product, nil
+ }
+ 
+ func (s *ProductService) Delete(ctx context.Context, id string) error {
+ 	product, err := s.repo.GetByID(ctx, id)
+ 	if err != nil {
+-		log.Printf("Error retrieving product by ID before deletion: %v", err)
+-		return err
++		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
++		return apperrors.DatabaseError()
+ 	}
+-	log.Printf("Deleting product: %v", product)
++	logger.Infof("Deleting product: %v", product)
+ 	err = s.repo.DeleteProduct(ctx, id)
+ 	if err != nil {
+-		log.Printf("Error deleting product by ID: %v", err)
+-		return err
++		logger.Errorf("Error deleting product by ID %s: %v", id, err)
++		return apperrors.DatabaseError()
+ 	}
+-	log.Printf("Deleted product by ID %s", id)
++	logger.Infof("Deleted product by ID %s", id)
+ 	return nil
+ }
+ 
+diff --git a/logger/logger.go b/logger/logger.go
+new file mode 100644
+index 0000000..49315a9
+--- /dev/null
++++ b/logger/logger.go
+@@ -0,0 +1,157 @@
++package logger
++
++import (
++	"os"
++	"time"
++
++	"github.com/rs/zerolog"
++)
++
++/*
++Common log messages
++*/
++const (
++	invalidArgMessage      = "invalid argument"
++	invalidArgValueMessage = "invalid argument value"
++	missingArgMessage      = "missing argument"
++)
++
++/*
++Logger interface
++Allows mocking & decoupling from zerolog
++*/
++type ZeroLogger interface {
++	Error() *zerolog.Event
++	Info() *zerolog.Event
++	Warn() *zerolog.Event
++	Debug() *zerolog.Event
++	With() zerolog.Context
++}
++
++var loggerInstance ZeroLogger
++
++// init runs once when the package is loaded
++func init() {
++	setDefaultLogLevel()
++}
++
++/*
++Set log level based on environment
++ENV=prod  -> Info
++ENV!=prod -> Debug
++*/
++func setDefaultLogLevel() {
++	if os.Getenv("ENV") == "prod" {
++		zerolog.SetGlobalLevel(zerolog.InfoLevel)
++	} else {
++		zerolog.SetGlobalLevel(zerolog.DebugLevel)
++	}
++}
++
++/*
++Allow injecting a custom logger (useful for tests)
++*/
++func SetLogger(baseLogger ZeroLogger) {
++	loggerInstance = baseLogger
++}
++
++/*
++Return logger instance (lazy init)
++*/
++func logger() ZeroLogger {
++	if loggerInstance != nil {
++		return loggerInstance
++	}
++
++	zerolog.TimeFieldFormat = time.RFC1123Z
++	baseLogger := zerolog.New(os.Stderr).With().Str("service", "products-api").
++		Str("env", os.Getenv("ENV")).Timestamp().Logger()
++	SetLogger(&baseLogger)
++	return loggerInstance
++}
++
++/*
++	Error helpers
++*/
++
++func InvalidArg(argName string) {
++	logger().
++		Error().
++		Str("arg", argName).
++		Msg(invalidArgMessage)
++}
++
++func WithCorrelationID(cid string) {
++	logger := zerolog.New(os.Stderr).With().Str("cid", cid).Timestamp().Logger()
++	SetLogger(&logger)
++}
++
++func InvalidArgValue(argName string, argValue interface{}) {
++	logger().
++		Error().
++		Str("arg", argName).
++		Interface("value", argValue).
++		Msg(invalidArgValueMessage)
++}
++
++func MissingArg(argName string) {
++	logger().
++		Error().
++		Str("arg", argName).
++		Msg(missingArgMessage)
++}
++
++func Error(err error, msg string) {
++	logger().
++		Error().
++		Err(err).
++		Msg(msg)
++}
++
++func ErrorWithFields(err error, msg string, fields map[string]interface{}) {
++	log := logger().With().Fields(fields).Logger()
++	log.Error().Err(err).Msg(msg)
++}
++
++/*
++	Info helpers
++*/
++
++func Infof(msg string, v ...interface{}) {
++	logger().Info().Msgf(msg, v...)
++}
++
++func InfoWithFields(msg string, fields map[string]interface{}) {
++	log := logger().With().Fields(fields).Logger()
++	log.Info().Msg(msg)
++}
++
++/*
++	Warn helpers
++*/
++
++func Warnf(msg string, v ...interface{}) {
++	logger().Warn().Msgf(msg, v...)
++}
++
++func WarnWithFields(msg string, fields map[string]interface{}) {
++	log := logger().With().Fields(fields).Logger()
++	log.Warn().Msg(msg)
++}
++
++/*
++	Debug helpers
++*/
++
++func Debugf(msg string, v ...interface{}) {
++	logger().Debug().Msgf(msg, v...)
++}
++
++func DebugWithFields(msg string, fields map[string]interface{}) {
++	log := logger().With().Fields(fields).Logger()
++	log.Debug().Msg(msg)
++}
++
++func Errorf(msg string, v ...interface{}) {
++	logger().Error().Msgf(msg, v...)
++}
+diff --git a/message-broker/listeners/order_creation.go b/message-broker/listeners/order_creation.go
+index b7b553c..7a00664 100644
+--- a/message-broker/listeners/order_creation.go
++++ b/message-broker/listeners/order_creation.go
+@@ -3,8 +3,9 @@ package listeners
+ import (
+ 	"context"
+ 	"encoding/json"
+-	"log"
++	apperrors "products-api/app-errors"
+ 	"products-api/internal/services"
++	"products-api/logger"
+ 	"products-api/utils"
+ 
+ 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+@@ -19,14 +20,14 @@ type OrderCreationListener struct {
+ 
+ func HandleOrderCreation(msg *types.Message, service *services.ProductService) error {
+ 	var orderCreationListener OrderCreationListener
+-	log.Printf("OrderCreated Received message: %s", *msg.Body)
++	logger.Infof("Received message for Order Created Topic %s", *msg.Body)
+ 	err := json.Unmarshal([]byte(*msg.Body), &orderCreationListener)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	if err := utils.DataValidator(&orderCreationListener); err != nil {
+-		log.Printf("Validation error: %v", err.(validator.ValidationErrors))
+-		return err
++		logger.Errorf("Validation error: %v", err.(validator.ValidationErrors))
++		return apperrors.ValidationError(err.(validator.ValidationErrors))
+ 	}
+ 	_, err = service.UpdateProductCount(context.Background(), orderCreationListener.ProductId, orderCreationListener.Quantity)
+ 	if err != nil {
+diff --git a/middeware/correlation_middleware.go b/middeware/correlation_middleware.go
+new file mode 100644
+index 0000000..e01dd80
+--- /dev/null
++++ b/middeware/correlation_middleware.go
+@@ -0,0 +1,21 @@
++package middeware
++
++import (
++	"products-api/logger"
++
++	"github.com/gofiber/fiber/v2"
++	"github.com/google/uuid"
++)
++
++func CorrelationMiddleWare() func(c *fiber.Ctx) error {
++	return func(c *fiber.Ctx) error {
++		correlationId := c.Get("X-Correlation-ID")
++		if correlationId == "" {
++			correlationId = uuid.NewString()
++		}
++		c.Locals("CorrelationID", correlationId)
++		c.Set("X-Correlation-ID", correlationId)
++		logger.WithCorrelationID(correlationId)
++		return c.Next()
++	}
++}
+diff --git a/middeware/error_middleware.go b/middeware/error_middleware.go
+new file mode 100644
+index 0000000..59d9262
+--- /dev/null
++++ b/middeware/error_middleware.go
+@@ -0,0 +1,29 @@
++package middeware
++
++import (
++	apperrors "products-api/app-errors"
++	"products-api/logger"
++
++	"github.com/gofiber/fiber/v2"
++)
++
++func ErrorMiddleware() func(c *fiber.Ctx) error {
++	return func(c *fiber.Ctx) error {
++		// Middleware logic to handle errors can be implemented here
++		logger.Infof("Processing request: Method %s OriginalURL %s Path %s IP %s", c.Method(), c.OriginalURL(), c.Path(), c.IP())
++		//how to set correlation id in fiber context
++		err := c.Next()
++		if err == nil {
++			return nil
++		}
++		if appError, ok := err.(*apperrors.AppError); ok {
++			logger.Errorf("App error occurred: %v", appError)
++			return c.Status(appError.HTTPStatus).JSON(appError)
++		}
++		logger.Errorf("Unhandled error occurred: %v", err)
++		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
++			"code":    "INTERNAL_ERROR",
++			"message": "Something went wrong",
++		})
++	}
++}
+diff --git a/utils/utils.go b/utils/utils.go
+index 78b24a0..0724ef8 100644
+--- a/utils/utils.go
++++ b/utils/utils.go
+@@ -1,6 +1,36 @@
+ package utils
+ 
+-import "github.com/go-playground/validator/v10"
++import (
++	"products-api/internal/models"
++
++	"github.com/go-playground/validator/v10"
++)
++
++const (
++	SortAsc  = "ASC"
++	SortDesc = "DESC"
++)
++
++var (
++	SortMapper = map[string]models.SortClause{
++		"price": {
++			Field:     "price",
++			Direction: SortAsc,
++		},
++		"price:desc": {
++			Field:     "price",
++			Direction: SortDesc,
++		},
++		"date": {
++			Field:     "created_at",
++			Direction: SortAsc,
++		},
++		"date:desc": {
++			Field:     "created_at",
++			Direction: SortDesc,
++		},
++	}
++)
+ 
+ func DataValidator[T interface{}](data T) error {
+ 	return validator.New().Struct(data)
