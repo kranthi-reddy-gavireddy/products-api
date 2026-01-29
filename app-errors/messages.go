@@ -21,4 +21,5 @@ const (
 	PRODUCT_NOT_FOUND     = "Product not found with the given ID %s"
 	INVALID_PARAMS        = "%s Cannot be an empty value"
 	INSUFFICIENT_QUANTITY = "Insufficient product quantity available for product ID %s"
+	INVALID_SORT_FIELD    = "%s is not valid field for sorting"
 )

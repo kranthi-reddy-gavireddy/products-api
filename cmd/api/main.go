@@ -54,6 +54,7 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 func main() {
 
 	server := server.New()
+	server.App.Use(middeware.CorrelationMiddleWare())
 	server.App.Use(middeware.ErrorMiddleware())
 	server.RegisterFiberRoutes()
 	dbInstance := database.New().GetDB()

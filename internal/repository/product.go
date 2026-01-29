@@ -72,12 +72,13 @@ func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Pro
 	return &p, nil
 }
 
-func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, limit, offset int) ([]models.Product, error) {
+func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []models.SortClause, limit, offset int) ([]models.Product, error) {
 	filterparameters := " AND price >= $1 AND price <= $2"
 	if category != "" {
 		filterparameters += " AND category = $5"
 	}
-	query := GET_ALL_QUERY + filterparameters + " ORDER BY created_at DESC LIMIT $3 OFFSET $4"
+	sortOrder := sortQueryGenerator(sortClauses)
+	query := GET_ALL_QUERY + filterparameters + sortOrder + " LIMIT $3 OFFSET $4"
 	var rows *sql.Rows
 	var err error
 	if category != "" {
@@ -100,4 +101,19 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 		products = append(products, p)
 	}
 	return products, rows.Err()
+}
+
+func sortQueryGenerator(sortClauses []models.SortClause) string {
+	query := ""
+	if len(sortClauses) == 0 {
+		return " ORDER BY created_at DESC "
+	}
+	query = " ORDER BY "
+	for idx, clause := range sortClauses {
+		if idx > 0 {
+			query += " , "
+		}
+		query += clause.Field + " " + clause.Direction
+	}
+	return query
 }

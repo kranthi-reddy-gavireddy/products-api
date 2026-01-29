@@ -152,7 +152,7 @@ func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
 		`
 	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
 		WithArgs(15.0, 20.0, 20, 0, category).WillReturnRows(rows)
-	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, category, 20, 0)
+	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, category, []models.SortClause{}, 20, 0)
 	fmt.Println(result)
 	suite.NoError(err, "expected no error while filtering products by params")
 	suite.Len(result, 2, "expected two products")

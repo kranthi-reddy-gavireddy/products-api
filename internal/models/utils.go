@@ -1,6 +1,13 @@
 package models
 
-import "math"
+import (
+	"math"
+)
+
+type SortClause struct {
+	Field     string
+	Direction string
+}
 
 type PageNation struct {
 	Limit  int `query:"limit" validate:"gte=0"`
@@ -11,6 +18,7 @@ type FilterParams struct {
 	MinPrice float64 `query:"minPrice" validate:"gte=0"`
 	MaxPrice float64 `query:"maxPrice" validate:"gte=0"`
 	Category string  `query:"category" validate:"omitempty,min=3,max=100,alphanumspace"`
+	Sort     string  `query:"sortField" validate:"omitempty"`
 	PageNation
 }
 
