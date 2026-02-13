@@ -30,18 +30,37 @@ func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, m
 	return products, nil
 }
 
-func (s *ProductService) Create(context context.Context, product *models.Product) error {
+func (s *ProductService) Create(context context.Context, req *dtos.ProductRequest) (*dtos.ProductResponse, error) {
 
 	var err error
+
+	product := &models.Product{
+		Name:     req.Name,
+		Price:    req.Price,
+		Category: req.Category,
+		Quantity: req.Quantity,
+	}
+	product.SetID()
 
 	err = s.repo.Create(context, product)
 	if err != nil {
 		logger.Errorf("Error creating product: %v", err)
-		return apperrors.DatabaseError()
+		return nil, apperrors.DatabaseError()
 	}
 
-	logger.Infof("Created product successfully: %v", product)
-	return nil
+	res := &dtos.ProductResponse{
+		ID: product.ID,
+		ProductRequest: dtos.ProductRequest{
+			Name:     product.Name,
+			Price:    product.Price,
+			Category: product.Category,
+			Quantity: product.Quantity,
+			SellerID: product.SellerID,
+		},
+	}
+
+	logger.Infof("Created product successfully: %+v", res)
+	return res, nil
 }
 
 // GetProducts retrieves all products

@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type BaseModel struct {
 	ID        string    `json:"id"`
@@ -13,6 +17,5 @@ func (b *BaseModel) SetID() {
 	b.ID = generateUniqueID()
 }
 func generateUniqueID() string {
-	// Dummy implementation for unique ID generation
-	return "UN-" + time.Now().Format("20060102150405")
+	return uuid.NewString()
 }

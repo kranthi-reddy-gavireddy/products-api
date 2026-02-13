@@ -32,16 +32,7 @@ type service struct {
 	db *sql.DB
 }
 
-var (
-	DBInstance *service
-)
-
 func New() Service {
-
-	// Reuse Connection
-	if DBInstance != nil {
-		return DBInstance
-	}
 
 	db, err := waitForDB(config.AppConfig.DBURL)
 	if err != nil {
@@ -58,10 +49,10 @@ func New() Service {
 		log.Fatal("Failed to run migrations:", err)
 	}
 
-	DBInstance = &service{
+	return &service{
 		db: db,
 	}
-	return DBInstance
+
 }
 func waitForDB(connStr string) (*sql.DB, error) {
 	var db *sql.DB

@@ -64,19 +64,23 @@ func New() *FiberServer {
 
 // AddMessageProcessor adds a new message processor for a queue
 func (s *FiberServer) AddMessageProcessor(queueURL string, handler func(msg *types.Message) error) {
+
 	processor := &MessageProcessor{
 		queueURL: queueURL,
 		handler:  handler,
 	}
+
 	s.processors = append(s.processors, processor)
 }
 
 // StartMessageProcessors starts all registered message processors
 func (s *FiberServer) StartMessageProcessors() {
+
 	for _, processor := range s.processors {
 		s.wg.Add(1)
 		go s.processQueue(processor)
 	}
+
 }
 
 // StopMessageProcessors stops all message processors
@@ -128,4 +132,12 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
 			}
 		}
 	}
+}
+
+func (s *FiberServer) AddMiddlewares(mwfs ...fiber.Handler) {
+
+	for _, mwf := range mwfs {
+		s.App.Use(mwf)
+	}
+
 }

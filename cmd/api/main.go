@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"products-api/internal/config"
 	"products-api/internal/database"
 	"products-api/internal/handlers"
 	"products-api/internal/repository"
@@ -52,6 +53,14 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 }
 
 func main() {
+
+	logger.Infof("Product API Service Starting...")
+
+	err := config.LoadConfig()
+	if err != nil {
+		logger.Errorf("Error loading config: %v", err)
+		return
+	}
 
 	server := server.New()
 	server.App.Use(middeware.CorrelationMiddleWare())

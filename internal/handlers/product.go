@@ -4,7 +4,6 @@ import (
 	"fmt"
 	apperrors "products-api/app-errors"
 	"products-api/dtos"
-	"products-api/internal/models"
 	"products-api/internal/services"
 	"products-api/logger"
 	"products-api/utils/helpers"
@@ -24,24 +23,22 @@ func NewProductHandler(productService *services.ProductService) *ProductHandler 
 
 func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 
-	var product models.Product
-	if err := c.BodyParser(&product); err != nil {
+	var req dtos.ProductRequest
+
+	if err := c.BodyParser(&req); err != nil {
 		return apperrors.BadRequestError(err.Error())
 	}
 
-	// Set unique ID
-	product.SetID()
-
-	if err := helpers.DataValidator(&product); err != nil {
+	if err := helpers.DataValidator(&req); err != nil {
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 
-	err := h.productService.Create(c.Context(), &product)
+	res, err := h.productService.Create(c.Context(), &req)
 	if err != nil {
 		return err
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(product)
+	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
 func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
