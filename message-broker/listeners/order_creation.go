@@ -6,7 +6,7 @@ import (
 	apperrors "products-api/app-errors"
 	"products-api/internal/services"
 	"products-api/logger"
-	"products-api/utils"
+	"products-api/utils/helpers"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-playground/validator/v10"
@@ -25,7 +25,7 @@ func HandleOrderCreation(msg *types.Message, service *services.ProductService) e
 	if err != nil {
 		return err
 	}
-	if err := utils.DataValidator(&orderCreationListener); err != nil {
+	if err := helpers.DataValidator(&orderCreationListener); err != nil {
 		logger.Errorf("Validation error: %v", err.(validator.ValidationErrors))
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}

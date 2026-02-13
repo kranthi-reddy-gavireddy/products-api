@@ -1,7 +1,7 @@
-package utils
+package helpers
 
 import (
-	"products-api/internal/models"
+	"products-api/dtos"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -12,7 +12,7 @@ const (
 )
 
 var (
-	SortMapper = map[string]models.SortClause{
+	SortMapper = map[string]dtos.SortClause{
 		"price": {
 			Field:     "price",
 			Direction: SortAsc,

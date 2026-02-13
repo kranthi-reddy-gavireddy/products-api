@@ -3,10 +3,11 @@ package handlers
 import (
 	"fmt"
 	apperrors "products-api/app-errors"
+	"products-api/dtos"
 	"products-api/internal/models"
 	"products-api/internal/services"
 	"products-api/logger"
-	"products-api/utils"
+	"products-api/utils/helpers"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -28,7 +29,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	}
 	// Set unique ID
 	product.SetID()
-	if err := utils.DataValidator(&product); err != nil {
+	if err := helpers.DataValidator(&product); err != nil {
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 	err := h.productService.Create(c.Context(), &product)
@@ -40,7 +41,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
-	pagnation := models.PageNation{}
+	pagnation := dtos.PageNation{}
 	err := c.QueryParser(&pagnation)
 	if err != nil {
 		return apperrors.BadRequestError(err.Error())
@@ -84,16 +85,16 @@ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
-	filter := models.FilterParams{}
+	filter := dtos.FilterParams{}
 	err := c.QueryParser(&filter)
 	if err != nil {
 		return apperrors.BadRequestError(err.Error())
 	}
-	if err := utils.DataValidator(&filter); err != nil {
+	if err := helpers.DataValidator(&filter); err != nil {
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 	filter.ApplyDefaults()
-	var sortClauses []models.SortClause
+	var sortClauses []dtos.SortClause
 	if filter.Sort != "" {
 		err, sortClauses = sortingParser(filter.Sort)
 	}
@@ -107,11 +108,11 @@ func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
 	return c.JSON(products)
 }
 
-func sortingParser(sortField string) (error, []models.SortClause) {
-	var sortClauses []models.SortClause
+func sortingParser(sortField string) (error, []dtos.SortClause) {
+	var sortClauses []dtos.SortClause
 	for _, data := range strings.Split(sortField, ",") {
 		logger.Infof("Field is %v", data)
-		if sortClause, ok := utils.SortMapper[data]; ok {
+		if sortClause, ok := helpers.SortMapper[data]; ok {
 			sortClauses = append(sortClauses, sortClause)
 		} else {
 			return apperrors.BadRequestError(fmt.Sprintf(apperrors.INVALID_SORT_FIELD, sortField)), nil

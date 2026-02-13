@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"products-api/dtos"
 	"products-api/internal/models"
 )
 
@@ -72,7 +73,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Pro
 	return &p, nil
 }
 
-func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []models.SortClause, limit, offset int) ([]models.Product, error) {
+func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []dtos.SortClause, limit, offset int) ([]models.Product, error) {
 	filterparameters := " AND price >= $1 AND price <= $2"
 	if category != "" {
 		filterparameters += " AND category = $5"
@@ -103,7 +104,7 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 	return products, rows.Err()
 }
 
-func sortQueryGenerator(sortClauses []models.SortClause) string {
+func sortQueryGenerator(sortClauses []dtos.SortClause) string {
 	query := ""
 	if len(sortClauses) == 0 {
 		return " ORDER BY created_at DESC "
