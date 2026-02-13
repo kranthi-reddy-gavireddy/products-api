@@ -9,9 +9,6 @@ import (
 
 func ErrorMiddleware() func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		// Middleware logic to handle errors can be implemented here
-		logger.Infof("Processing request: Method %s OriginalURL %s Path %s IP %s", c.Method(), c.OriginalURL(), c.Path(), c.IP())
-		//how to set correlation id in fiber context
 		err := c.Next()
 		if err == nil {
 			return nil
