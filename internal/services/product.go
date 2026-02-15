@@ -39,6 +39,7 @@ func (s *ProductService) Create(context context.Context, req *dtos.ProductReques
 		Price:    req.Price,
 		Category: req.Category,
 		Quantity: req.Quantity,
+		SellerID: req.SellerID,
 	}
 	product.SetID()
 
