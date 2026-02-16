@@ -2,7 +2,10 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
+	"products-api/internal/config"
 	"testing"
 	"time"
 
@@ -33,15 +36,19 @@ func mustStartPostgresContainer() (func(context.Context, ...testcontainers.Termi
 		return nil, err
 	}
 
-	_, err = dbContainer.Host(context.Background())
+	host, err := dbContainer.Host(context.Background())
 	if err != nil {
 		return dbContainer.Terminate, err
 	}
 
-	_, err = dbContainer.MappedPort(context.Background(), "5432/tcp")
+	port, err := dbContainer.MappedPort(context.Background(), "5432/tcp")
 	if err != nil {
 		return dbContainer.Terminate, err
 	}
+
+	// set DBURL env var so the tested code can pick it up
+	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPwd, host, port.Port(), dbName)
+	_ = os.Setenv("DBURL", connStr)
 
 	return dbContainer.Terminate, err
 }
@@ -50,6 +57,13 @@ func TestMain(m *testing.M) {
 	teardown, err := mustStartPostgresContainer()
 	if err != nil {
 		log.Fatalf("could not start postgres container: %v", err)
+	}
+
+	// Load configuration from environment before running tests so
+	// `config.AppConfig` is initialized for callers of `New()`.
+	err = config.LoadConfig()
+	if err != nil {
+		log.Fatalf("could not load config: %v", err)
 	}
 
 	m.Run()
