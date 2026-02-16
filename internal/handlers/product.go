@@ -13,15 +13,19 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type IProductHandler interface {
+	Create(c *fiber.Ctx) error
+	Get(c *fiber.Ctx) error
+	Filter(c *fiber.Ctx) error
+	GetByID(c *fiber.Ctx) error
+	Delete(c *fiber.Ctx) error
+}
+
 type ProductHandler struct {
-	productService *services.ProductService
+	productService services.IProductService
 }
 
-func NewProductHandler(productService *services.ProductService) *ProductHandler {
-	return &ProductHandler{productService: productService}
-}
-
-func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
+func (h *ProductHandler) Create(c *fiber.Ctx) error {
 
 	var req dtos.ProductRequest
 
@@ -41,7 +45,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
-func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
+func (h *ProductHandler) Get(c *fiber.Ctx) error {
 
 	pagnation := dtos.PageNation{}
 
@@ -52,7 +56,38 @@ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
 
 	pagnation.ApplyDefaults()
 
-	products, err := h.productService.GetProducts(c.Context(), pagnation.Limit, pagnation.Offset)
+	products, err := h.productService.Get(c.Context(), pagnation.Limit, pagnation.Offset)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(products)
+}
+
+func (h *ProductHandler) Filter(c *fiber.Ctx) error {
+
+	filter := dtos.FilterParams{}
+
+	err := c.QueryParser(&filter)
+	if err != nil {
+		return apperrors.BadRequestError(err.Error())
+	}
+
+	if err := helpers.DataValidator(&filter); err != nil {
+		return apperrors.ValidationError(err.(validator.ValidationErrors))
+	}
+
+	filter.ApplyDefaults()
+
+	var sortClauses []dtos.SortClause
+	if filter.Sort != "" {
+		err, sortClauses = sortingParser(filter.Sort)
+	}
+	if err != nil {
+		return err
+	}
+
+	products, err := h.productService.Filter(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
 	if err != nil {
 		return err
 	}
@@ -95,37 +130,6 @@ func (h *ProductHandler) Delete(c *fiber.Ctx) error {
 
 }
 
-func (h *ProductHandler) FilterProducts(c *fiber.Ctx) error {
-
-	filter := dtos.FilterParams{}
-
-	err := c.QueryParser(&filter)
-	if err != nil {
-		return apperrors.BadRequestError(err.Error())
-	}
-
-	if err := helpers.DataValidator(&filter); err != nil {
-		return apperrors.ValidationError(err.(validator.ValidationErrors))
-	}
-
-	filter.ApplyDefaults()
-
-	var sortClauses []dtos.SortClause
-	if filter.Sort != "" {
-		err, sortClauses = sortingParser(filter.Sort)
-	}
-	if err != nil {
-		return err
-	}
-
-	products, err := h.productService.FilterProducts(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(products)
-}
-
 func sortingParser(sortField string) (error, []dtos.SortClause) {
 
 	var sortClauses []dtos.SortClause
@@ -143,4 +147,8 @@ func sortingParser(sortField string) (error, []dtos.SortClause) {
 	}
 
 	return nil, sortClauses
+}
+
+func New(productService services.IProductService) IProductHandler {
+	return &ProductHandler{productService: productService}
 }

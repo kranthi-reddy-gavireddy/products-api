@@ -10,24 +10,19 @@ import (
 	"products-api/logger"
 )
 
-// ProductService handles product business logic
-type ProductService struct {
-	repo *repository.ProductRepository
+type IProductService interface {
+	Create(context context.Context, req *dtos.ProductRequest) (*dtos.ProductResponse, error)
+	Update(ctx context.Context, id string, req *dtos.ProductRequest) (*dtos.ProductResponse, error)
+	UpdateCount(ctx context.Context, id string, sold int) (*models.Product, error)
+	Get(ctx context.Context, limit, offset int) ([]models.Product, error)
+	Filter(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]models.Product, error)
+	GetByID(ctx context.Context, id string) (*models.Product, error)
+	Delete(ctx context.Context, id string) error
 }
 
-func (s *ProductService) FilterProducts(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]models.Product, error) {
-
-	var err error
-
-	logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, limit, offset)
-	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, sortClause, limit, offset)
-	if err != nil {
-		logger.Errorf("Error filtering products: %v", err)
-		return nil, apperrors.DatabaseError()
-	}
-
-	logger.Infof("Filtered products: %v", products)
-	return products, nil
+// ProductService handles product business logic
+type ProductService struct {
+	repo repository.IProductRepository
 }
 
 func (s *ProductService) Create(context context.Context, req *dtos.ProductRequest) (*dtos.ProductResponse, error) {
@@ -51,7 +46,7 @@ func (s *ProductService) Create(context context.Context, req *dtos.ProductReques
 
 	res := &dtos.ProductResponse{
 		ID: product.ID,
-		ProductRequest: dtos.ProductRequest{
+		ProductBase: dtos.ProductBase{
 			Name:     product.Name,
 			Price:    product.Price,
 			Category: product.Category,
@@ -64,23 +59,42 @@ func (s *ProductService) Create(context context.Context, req *dtos.ProductReques
 	return res, nil
 }
 
-// GetProducts retrieves all products
-func (s *ProductService) GetProducts(ctx context.Context, limit, offset int) ([]models.Product, error) {
+func (s *ProductService) Update(ctx context.Context, id string, req *dtos.ProductRequest) (*dtos.ProductResponse, error) {
 
-	var err error
-
-	logger.Infof("Retrieving products with limit %d and offset %d", limit, offset)
-	products, err := s.repo.GetAll(ctx, limit, offset)
+	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		logger.Errorf("Error retrieving products: %v", err)
+		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
 		return nil, apperrors.DatabaseError()
 	}
 
-	logger.Infof("Retrieved %d products %v", len(products), products)
-	return products, nil
+	product.Name = req.Name
+	product.Price = req.Price
+	product.Category = req.Category
+	product.Quantity = req.Quantity
+	product.SellerID = req.SellerID
+
+	err = s.repo.Update(ctx, product)
+	if err != nil {
+		logger.Errorf("Error updating product by ID %s: %v", id, err)
+		return nil, apperrors.DatabaseError()
+	}
+
+	res := &dtos.ProductResponse{
+		ID: product.ID,
+		ProductBase: dtos.ProductBase{
+			Name:     product.Name,
+			Price:    product.Price,
+			Category: product.Category,
+			Quantity: product.Quantity,
+			SellerID: product.SellerID,
+		},
+	}
+
+	logger.Infof("Updated product successfully: %+v", res)
+	return res, nil
 }
 
-func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold int) (*models.Product, error) {
+func (s *ProductService) UpdateCount(ctx context.Context, id string, sold int) (*models.Product, error) {
 
 	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -101,6 +115,37 @@ func (s *ProductService) UpdateProductCount(ctx context.Context, id string, sold
 
 	logger.Infof("Updated product count successfully for product  %v", product)
 	return product, nil
+}
+
+// GetProducts retrieves all products
+func (s *ProductService) Get(ctx context.Context, limit, offset int) ([]models.Product, error) {
+
+	var err error
+
+	logger.Infof("Retrieving products with limit %d and offset %d", limit, offset)
+	products, err := s.repo.GetAll(ctx, limit, offset)
+	if err != nil {
+		logger.Errorf("Error retrieving products: %v", err)
+		return nil, apperrors.DatabaseError()
+	}
+
+	logger.Infof("Retrieved %d products %v", len(products), products)
+	return products, nil
+}
+
+func (s *ProductService) Filter(ctx context.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]models.Product, error) {
+
+	var err error
+
+	logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, limit, offset)
+	products, err := s.repo.FilterProducts(ctx, minPrice, maxPrice, category, sortClause, limit, offset)
+	if err != nil {
+		logger.Errorf("Error filtering products: %v", err)
+		return nil, apperrors.DatabaseError()
+	}
+
+	logger.Infof("Filtered products: %v", products)
+	return products, nil
 }
 
 func (s *ProductService) GetByID(ctx context.Context, id string) (*models.Product, error) {
@@ -134,11 +179,6 @@ func (s *ProductService) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// CreateProduct creates a new product
-// func (s *ProductService) CreateProduct(ctx context.Context, req models.ProductCreateRequest) (*models.Product, error) {
-// 	return s.repo.CreateProduct(ctx, req)
-// }
-
-func NewProductService(repo *repository.ProductRepository) *ProductService {
+func New(repo repository.IProductRepository) IProductService {
 	return &ProductService{repo: repo}
 }

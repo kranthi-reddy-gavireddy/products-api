@@ -18,7 +18,7 @@ type OrderCreationListener struct {
 	Quantity  int    `json:"quantity" validate:"required,min=1,gt=0"`
 }
 
-func HandleOrderCreation(msg *types.Message, service *services.ProductService) error {
+func HandleOrderCreation(msg *types.Message, service services.IProductService) error {
 	var orderCreationListener OrderCreationListener
 	logger.Infof("Received message for Order Created Topic %s", *msg.Body)
 	err := json.Unmarshal([]byte(*msg.Body), &orderCreationListener)
@@ -29,7 +29,7 @@ func HandleOrderCreation(msg *types.Message, service *services.ProductService) e
 		logger.Errorf("Validation error: %v", err.(validator.ValidationErrors))
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
-	_, err = service.UpdateProductCount(context.Background(), orderCreationListener.ProductId, orderCreationListener.Quantity)
+	_, err = service.UpdateCount(context.Background(), orderCreationListener.ProductId, orderCreationListener.Quantity)
 	if err != nil {
 		return err
 	}

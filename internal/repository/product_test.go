@@ -19,7 +19,7 @@ type ProductRepositoryTestSuite struct {
 	suite.Suite
 	db   *sql.DB
 	mock sqlmock.Sqlmock
-	repo *ProductRepository
+	repo IProductRepository
 }
 
 func MockProduct() models.Product {
@@ -38,7 +38,7 @@ func (suite *ProductRepositoryTestSuite) SetupSuite() {
 	suite.NoError(err)
 	suite.db = db
 	suite.mock = mock
-	suite.repo = NewProductRepository(db)
+	suite.repo = New(db)
 }
 
 func (suite *ProductRepositoryTestSuite) TearDownSuite() {

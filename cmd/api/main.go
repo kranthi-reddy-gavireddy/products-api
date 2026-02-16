@@ -66,11 +66,12 @@ func main() {
 	server.App.Use(middeware.CorrelationMiddleWare())
 	server.App.Use(middeware.ErrorMiddleware())
 	server.RegisterFiberRoutes()
+
 	dbInstance := database.New().GetDB()
-	productRepo := repository.NewProductRepository(dbInstance)
-	prodcutService := services.NewProductService(productRepo)
-	productHandler := handlers.NewProductHandler(prodcutService)
-	productRoutes := routes.NewProductRoutes(*productHandler)
+	productRepo := repository.New(dbInstance)
+	prodcutService := services.New(productRepo)
+	productHandler := handlers.New(prodcutService)
+	productRoutes := routes.New(productHandler)
 	productRoutes.RegisterRoutes(server)
 	// Add message processors for your queues
 	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
