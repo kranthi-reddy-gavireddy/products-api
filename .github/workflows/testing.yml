@@ -26,7 +26,7 @@ jobs:
         DB_USERNAME=test
         DB_PASSWORD=test
         DB_SCHEMA=public
-        DB_URL=postgres://test:test@psql_bp:5432/test?sslmode=disable
+        DBURL=postgresql://test:test@psql_bp:5432/test
         # AWS Configuration (dummy for LocalStack)
         AWS_ACCESS_KEY_ID=test
         AWS_SECRET_ACCESS_KEY=test
