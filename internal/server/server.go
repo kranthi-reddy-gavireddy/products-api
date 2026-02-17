@@ -62,6 +62,14 @@ func New() *FiberServer {
 	return server
 }
 
+func (s *FiberServer) AddMiddleware(mwf ...fiber.Handler) {
+
+	for _, mw := range mwf {
+		s.App.Use(mw)
+	}
+
+}
+
 // AddMessageProcessor adds a new message processor for a queue
 func (s *FiberServer) AddMessageProcessor(queueURL string, handler func(msg *types.Message) error) {
 

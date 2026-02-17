@@ -63,21 +63,21 @@ func main() {
 	}
 
 	server := server.New()
-	server.App.Use(middeware.CorrelationMiddleWare())
-	server.App.Use(middeware.ErrorMiddleware())
+	server.AddMiddleware(middeware.CorrelationMiddleWare(), middeware.RequestLogger(), middeware.ErrorMiddleware())
 	server.RegisterFiberRoutes()
 
 	dbInstance := database.New().GetDB()
+
 	productRepo := repository.New(dbInstance)
 	prodcutService := services.New(productRepo)
 	productHandler := handlers.New(prodcutService)
 	productRoutes := routes.New(productHandler)
 	productRoutes.RegisterRoutes(server.App)
-	// Add message processors for your queues
+
 	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
 		return listeners.HandleOrderCreation(msg, prodcutService)
 	})
-	// Start background message processors
+
 	server.StartMessageProcessors()
 
 	// Create a done channel to signal when the shutdown is complete
