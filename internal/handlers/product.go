@@ -11,10 +11,12 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type IProductHandler interface {
 	Create(c *fiber.Ctx) error
+	Update(c *fiber.Ctx) error
 	Get(c *fiber.Ctx) error
 	Filter(c *fiber.Ctx) error
 	GetByID(c *fiber.Ctx) error
@@ -43,6 +45,38 @@ func (h *ProductHandler) Create(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(res)
+}
+
+func (h *ProductHandler) Update(c *fiber.Ctx) error {
+
+	id := c.Params("id")
+	if id == "" {
+		return apperrors.BadRequestError(`Id Cannot be an empty value`)
+	}
+
+	var (
+		req dtos.ProductRequest
+		err error
+	)
+
+	if err = uuid.Validate(id); err != nil {
+		return apperrors.BadRequestError(`Invalid UUID format for id`)
+	}
+
+	if err = c.BodyParser(&req); err != nil {
+		return apperrors.BadRequestError(err.Error())
+	}
+
+	if err := helpers.DataValidator(&req); err != nil {
+		return apperrors.ValidationError(err.(validator.ValidationErrors))
+	}
+
+	res, err := h.productService.Update(c.Context(), id, &req)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(res)
 }
 
 func (h *ProductHandler) Get(c *fiber.Ctx) error {

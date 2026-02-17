@@ -32,6 +32,7 @@ var (
 	}
 )
 
-func DataValidator[T interface{}](data T) error {
+func DataValidator[T *dtos.ProductRequest | *dtos.FilterParams | *dtos.OrderCreationListener](data T) error {
+
 	return validator.New().Struct(data)
 }

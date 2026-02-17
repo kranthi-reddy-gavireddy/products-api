@@ -72,7 +72,7 @@ func main() {
 	prodcutService := services.New(productRepo)
 	productHandler := handlers.New(prodcutService)
 	productRoutes := routes.New(productHandler)
-	productRoutes.RegisterRoutes(server)
+	productRoutes.RegisterRoutes(server.App)
 	// Add message processors for your queues
 	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
 		return listeners.HandleOrderCreation(msg, prodcutService)
