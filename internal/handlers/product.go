@@ -6,6 +6,7 @@ import (
 	"products-api/dtos"
 	"products-api/internal/services"
 	"products-api/logger"
+	ctx "products-api/utils/context"
 	"products-api/utils/helpers"
 	"strings"
 
@@ -15,19 +16,19 @@ import (
 )
 
 type IProductHandler interface {
-	Create(c *fiber.Ctx) error
-	Update(c *fiber.Ctx) error
-	Get(c *fiber.Ctx) error
-	Filter(c *fiber.Ctx) error
-	GetByID(c *fiber.Ctx) error
-	Delete(c *fiber.Ctx) error
+	Create(c *ctx.Context) error
+	Update(c *ctx.Context) error
+	Get(c *ctx.Context) error
+	Filter(c *ctx.Context) error
+	GetByID(c *ctx.Context) error
+	Delete(c *ctx.Context) error
 }
 
 type ProductHandler struct {
 	productService services.IProductService
 }
 
-func (h *ProductHandler) Create(c *fiber.Ctx) error {
+func (h *ProductHandler) Create(c *ctx.Context) error {
 
 	var req dtos.ProductRequest
 
@@ -39,7 +40,7 @@ func (h *ProductHandler) Create(c *fiber.Ctx) error {
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 
-	res, err := h.productService.Create(c.Context(), &req)
+	res, err := h.productService.Create(c, &req)
 	if err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func (h *ProductHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
-func (h *ProductHandler) Update(c *fiber.Ctx) error {
+func (h *ProductHandler) Update(c *ctx.Context) error {
 
 	id := c.Params("id")
 	if id == "" {
@@ -71,7 +72,7 @@ func (h *ProductHandler) Update(c *fiber.Ctx) error {
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
 
-	res, err := h.productService.Update(c.Context(), id, &req)
+	res, err := h.productService.Update(c, id, &req)
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func (h *ProductHandler) Update(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
-func (h *ProductHandler) Get(c *fiber.Ctx) error {
+func (h *ProductHandler) Get(c *ctx.Context) error {
 
 	pagnation := dtos.PageNation{}
 
@@ -90,7 +91,7 @@ func (h *ProductHandler) Get(c *fiber.Ctx) error {
 
 	pagnation.ApplyDefaults()
 
-	products, err := h.productService.Get(c.Context(), pagnation.Limit, pagnation.Offset)
+	products, err := h.productService.Get(c, pagnation.Limit, pagnation.Offset)
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (h *ProductHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(products)
 }
 
-func (h *ProductHandler) Filter(c *fiber.Ctx) error {
+func (h *ProductHandler) Filter(c *ctx.Context) error {
 
 	filter := dtos.FilterParams{}
 
@@ -121,7 +122,7 @@ func (h *ProductHandler) Filter(c *fiber.Ctx) error {
 		return err
 	}
 
-	products, err := h.productService.Filter(c.Context(), filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
+	products, err := h.productService.Filter(c, filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
 	if err != nil {
 		return err
 	}
@@ -129,14 +130,14 @@ func (h *ProductHandler) Filter(c *fiber.Ctx) error {
 	return c.JSON(products)
 }
 
-func (h *ProductHandler) GetByID(c *fiber.Ctx) error {
+func (h *ProductHandler) GetByID(c *ctx.Context) error {
 
 	id := c.Params("id")
 	if id == "" {
 		return apperrors.BadRequestError(`Id Cannot be an empty value`)
 	}
 
-	product, err := h.productService.GetByID(c.Context(), id)
+	product, err := h.productService.GetByID(c, id)
 	if err != nil {
 		return err
 	}
@@ -147,14 +148,14 @@ func (h *ProductHandler) GetByID(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(product)
 }
 
-func (h *ProductHandler) Delete(c *fiber.Ctx) error {
+func (h *ProductHandler) Delete(c *ctx.Context) error {
 
 	id := c.Params("id")
 	if id == "" {
 		return apperrors.BadRequestError(fmt.Sprintf(apperrors.INVALID_PARAMS, "id"))
 	}
 
-	err := h.productService.Delete(c.Context(), id)
+	err := h.productService.Delete(c, id)
 	if err != nil {
 		return err
 	}

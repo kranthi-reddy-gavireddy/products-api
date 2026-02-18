@@ -15,7 +15,6 @@ import (
 	"products-api/internal/services"
 	"products-api/logger"
 	"products-api/message-broker/listeners"
-	"products-api/middeware"
 	"strconv"
 	"syscall"
 	"time"
@@ -63,7 +62,6 @@ func main() {
 	}
 
 	server := server.New()
-	server.AddMiddleware(middeware.CorrelationMiddleWare(), middeware.RequestLogger(), middeware.ErrorMiddleware())
 	server.RegisterFiberRoutes()
 
 	dbInstance := database.New().GetDB()

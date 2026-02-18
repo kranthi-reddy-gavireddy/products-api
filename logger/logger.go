@@ -51,8 +51,9 @@ func setDefaultLogLevel() {
 /*
 Allow injecting a custom logger (useful for tests)
 */
-func SetLogger(baseLogger ZeroLogger) {
+func SetLogger(baseLogger ZeroLogger) ZeroLogger {
 	loggerInstance = baseLogger
+	return loggerInstance
 }
 
 /*
@@ -90,9 +91,9 @@ func InvalidArg(argName string) {
 		Msg(invalidArgMessage)
 }
 
-func WithCorrelationID(cid string) {
+func WithCorrelationID(cid string) ZeroLogger {
 	logger := baseLogger().With().Str("cid", cid).Logger()
-	SetLogger(&logger)
+	return SetLogger(&logger)
 }
 
 func InvalidArgValue(argName string, argValue interface{}) {

@@ -28,6 +28,7 @@ func HandleOrderCreation(msg *types.Message, service services.IProductService) e
 		logger.Errorf("Validation error: %v", err.(validator.ValidationErrors))
 		return apperrors.ValidationError(err.(validator.ValidationErrors))
 	}
+
 	_, err = service.UpdateCount(context.Background(), orderCreationListener.ProductId, orderCreationListener.Quantity)
 	if err != nil {
 		return err

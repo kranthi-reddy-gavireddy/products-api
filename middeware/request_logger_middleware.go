@@ -2,9 +2,8 @@ package middeware
 
 import (
 	"products-api/logger"
+	ctx "products-api/utils/context"
 	"time"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 type RequestLog struct {
@@ -14,10 +13,10 @@ type RequestLog struct {
 	Latency       int    `json:"latency"`
 }
 
-func RequestLogger() func(c *fiber.Ctx) error {
-	return func(c *fiber.Ctx) error {
+func RequestLogger(next func(app *ctx.Context) error) func(c *ctx.Context) error {
+	return func(c *ctx.Context) error {
 		start := time.Now()
-		err := c.Next()
+		err := next(c)
 		end := time.Since(start)
 		requestLog := RequestLog{
 			Method:        c.Method(),

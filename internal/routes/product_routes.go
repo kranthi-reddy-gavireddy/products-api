@@ -2,6 +2,7 @@ package routes
 
 import (
 	"products-api/internal/handlers"
+	"products-api/middeware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,11 +18,11 @@ type ProductRoutes struct {
 func (r *ProductRoutes) RegisterRoutes(engine fiber.Router) {
 	//I want to set /products as the base route for product-related endpoints
 	group := engine.Group("/api/products")
-	group.Post("", r.handler.Create)
-	group.Put("/id/:id", r.handler.Update)
-	group.Get("", r.handler.Filter)
-	group.Get("/id/:id", r.handler.GetByID)
-	group.Delete("/id/:id", r.handler.Delete)
+	group.Post("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Create))))
+	group.Put("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Update))))
+	group.Get("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Get))))
+	group.Get("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.GetByID))))
+	group.Delete("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Delete))))
 	//group.Get("/search", r.handler.FilterProducts)
 
 }
