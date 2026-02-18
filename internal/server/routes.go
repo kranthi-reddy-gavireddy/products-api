@@ -80,6 +80,7 @@ func (s *FiberServer) notifyHandler(c *fiber.Ctx) error {
 }
 
 func (s *FiberServer) eventsHandler(c *fiber.Ctx) error {
+	logger := logger.New()
 	if s.sqs == nil {
 		return c.Status(500).JSON(fiber.Map{"error": "SQS client not initialized"})
 	}

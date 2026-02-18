@@ -1,7 +1,6 @@
 package middeware
 
 import (
-	"products-api/logger"
 	ctx "products-api/utils/context"
 	"time"
 )
@@ -24,7 +23,7 @@ func RequestLogger(next func(app *ctx.Context) error) func(c *ctx.Context) error
 			ReponseStatus: c.Response().StatusCode(),
 			Latency:       int(end),
 		}
-		logger.Infof("Request Completed %v", &requestLog)
+		c.Logger.Infof("Request Completed %v", &requestLog)
 		return err
 	}
 }

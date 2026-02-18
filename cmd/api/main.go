@@ -26,6 +26,8 @@ import (
 func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	logger := logger.New()
+
 	defer stop()
 
 	// Listen for the interrupt signal.
@@ -52,6 +54,8 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 }
 
 func main() {
+
+	logger := logger.New()
 
 	logger.Infof("Product API Service Starting...")
 

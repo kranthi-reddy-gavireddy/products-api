@@ -58,11 +58,13 @@ func waitForDB(connStr string) (*sql.DB, error) {
 	var db *sql.DB
 	var err error
 
+	logger := logger.New()
+
 	for i := 1; i <= 15; i++ {
 		db, err = sql.Open("pgx", connStr)
 		if err == nil {
 			if err = db.Ping(); err == nil {
-				log.Println("✅ database connected")
+				logger.Infof("✅ database connected")
 				return db, nil
 			}
 		}
@@ -130,6 +132,7 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
+	logger := logger.New()
 	logger.Infof("Disconnected from database")
 	return s.db.Close()
 }

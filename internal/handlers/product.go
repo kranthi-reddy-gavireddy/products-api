@@ -5,7 +5,6 @@ import (
 	apperrors "products-api/app-errors"
 	"products-api/dtos"
 	"products-api/internal/services"
-	"products-api/logger"
 	ctx "products-api/utils/context"
 	"products-api/utils/helpers"
 	"strings"
@@ -170,8 +169,6 @@ func sortingParser(sortField string) (error, []dtos.SortClause) {
 	var sortClauses []dtos.SortClause
 
 	for _, data := range strings.Split(sortField, ",") {
-
-		logger.Infof("Field is %v", data)
 
 		if sortClause, ok := helpers.SortMapper[data]; ok {
 			sortClauses = append(sortClauses, sortClause)

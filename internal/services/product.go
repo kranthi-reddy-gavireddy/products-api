@@ -42,7 +42,7 @@ func (s *ProductService) Create(context *ctx.Context, req *dtos.ProductRequest) 
 
 	err = s.repo.Create(context.Context(), product)
 	if err != nil {
-		logger.Errorf("Error creating product: %v", err)
+		context.Logger.Errorf("Error creating product: %v", err)
 		return nil, apperrors.DatabaseError()
 	}
 
@@ -57,7 +57,7 @@ func (s *ProductService) Create(context *ctx.Context, req *dtos.ProductRequest) 
 		},
 	}
 
-	logger.Infof("Created product successfully: %+v", res)
+	context.Logger.Infof("Created product successfully: %+v", res)
 	return res, nil
 }
 
@@ -65,7 +65,7 @@ func (s *ProductService) Update(ctx *ctx.Context, id string, req *dtos.ProductRe
 
 	product, err := s.repo.GetByID(ctx.Context(), id)
 	if err != nil {
-		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
+		ctx.Logger.Errorf("Error retrieving product by ID %s: %v", id, err)
 		return nil, apperrors.DatabaseError()
 	}
 
@@ -77,7 +77,7 @@ func (s *ProductService) Update(ctx *ctx.Context, id string, req *dtos.ProductRe
 
 	err = s.repo.Update(ctx.Context(), product)
 	if err != nil {
-		logger.Errorf("Error updating product by ID %s: %v", id, err)
+		ctx.Logger.Errorf("Error updating product by ID %s: %v", id, err)
 		return nil, apperrors.DatabaseError()
 	}
 
@@ -92,11 +92,13 @@ func (s *ProductService) Update(ctx *ctx.Context, id string, req *dtos.ProductRe
 		},
 	}
 
-	logger.Infof("Updated product successfully: %+v", res)
+	ctx.Logger.Infof("Updated product successfully: %+v", res)
 	return res, nil
 }
 
 func (s *ProductService) UpdateCount(context context.Context, id string, sold int) (*models.Product, error) {
+
+	logger := logger.New()
 
 	product, err := s.repo.GetByID(context, id)
 	if err != nil {
@@ -124,14 +126,14 @@ func (s *ProductService) Get(ctx *ctx.Context, limit, offset int) ([]models.Prod
 
 	var err error
 
-	logger.Infof("Retrieving products with limit %d and offset %d", limit, offset)
+	ctx.Logger.Infof("Retrieving products with limit %d and offset %d", limit, offset)
 	products, err := s.repo.GetAll(ctx.Context(), limit, offset)
 	if err != nil {
-		logger.Errorf("Error retrieving products: %v", err)
+		ctx.Logger.Errorf("Error retrieving products: %v", err)
 		return nil, apperrors.DatabaseError()
 	}
 
-	logger.Infof("Retrieved %d products %v", len(products), products)
+	ctx.Logger.Infof("Retrieved %d products %v", len(products), products)
 	return products, nil
 }
 
@@ -139,14 +141,14 @@ func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice
 
 	var err error
 
-	logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, limit, offset)
+	context.Logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, limit, offset)
 	products, err := s.repo.FilterProducts(context.Context(), minPrice, maxPrice, category, sortClause, limit, offset)
 	if err != nil {
-		logger.Errorf("Error filtering products: %v", err)
+		context.Logger.Errorf("Error filtering products: %v", err)
 		return nil, apperrors.DatabaseError()
 	}
 
-	logger.Infof("Filtered products: %v", products)
+	context.Logger.Infof("Filtered products: %v", products)
 	return products, nil
 }
 
@@ -154,11 +156,11 @@ func (s *ProductService) GetByID(ctx *ctx.Context, id string) (*models.Product, 
 
 	product, err := s.repo.GetByID(ctx.Context(), id)
 	if err != nil {
-		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
+		ctx.Logger.Errorf("Error retrieving product by ID %s: %v", id, err)
 		return nil, apperrors.DatabaseError()
 	}
 
-	logger.Infof("Retrieved product by ID %s: %v", id, product)
+	ctx.Logger.Infof("Retrieved product by ID %s: %v", id, product)
 	return product, nil
 }
 
@@ -166,18 +168,18 @@ func (s *ProductService) Delete(ctx *ctx.Context, id string) error {
 
 	product, err := s.repo.GetByID(ctx.Context(), id)
 	if err != nil {
-		logger.Errorf("Error retrieving product by ID %s: %v", id, err)
+		ctx.Logger.Errorf("Error retrieving product by ID %s: %v", id, err)
 		return apperrors.DatabaseError()
 	}
 
-	logger.Infof("Deleting product: %v", product)
+	ctx.Logger.Infof("Deleting product: %v", product)
 	err = s.repo.DeleteProduct(ctx.Context(), id)
 	if err != nil {
-		logger.Errorf("Error deleting product by ID %s: %v", id, err)
+		ctx.Logger.Errorf("Error deleting product by ID %s: %v", id, err)
 		return apperrors.DatabaseError()
 	}
 
-	logger.Infof("Deleted product by ID %s", id)
+	ctx.Logger.Infof("Deleted product by ID %s", id)
 	return nil
 }
 

@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"products-api/logger"
 )
 
 // RunMigrations creates the necessary database tables
 func RunMigrations(db *sql.DB) error {
-	log.Println("Running database migrations...")
+
+	logger := logger.New()
+	logger.Infof("Running database migrations...")
 
 	// Create products table
 	productsTable := `

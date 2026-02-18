@@ -17,6 +17,8 @@ import (
 func HandleOrderCreation(msg *types.Message, service services.IProductService) error {
 	var orderCreationListener dtos.OrderCreationListener
 
+	logger := logger.New()
+
 	logger.Infof("Received message for Order Created Topic %s", *msg.Body)
 
 	err := json.Unmarshal([]byte(*msg.Body), &orderCreationListener)

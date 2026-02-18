@@ -36,6 +36,7 @@ type MessageProcessor struct {
 func New() *FiberServer {
 	// Load AWS config
 	cfg, err := config.LoadDefaultConfig(context.TODO())
+	logger := logger.New()
 	if err != nil {
 		logger.Errorf("unable to load AWS config: %v", err)
 		// Continue without SNS if config fails
@@ -100,7 +101,7 @@ func (s *FiberServer) StopMessageProcessors() {
 // processQueue continuously processes messages from a queue
 func (s *FiberServer) processQueue(processor *MessageProcessor) {
 	defer s.wg.Done()
-
+	logger := logger.New()
 	for {
 		select {
 		case <-s.ctx.Done():
