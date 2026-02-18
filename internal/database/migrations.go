@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"products-api/logger"
 )
 
 // RunMigrations creates the necessary database tables
 func RunMigrations(db *sql.DB) error {
-	log.Println("Running database migrations...")
+
+	logger := logger.New()
+	logger.Infof("Running database migrations...")
 
 	// Create products table
 	productsTable := `
@@ -31,6 +32,7 @@ func RunMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_products_seller_name_active ON products (seller_id, name) WHERE deleted_at IS NULL;`,
 	}
 
 	ctx := context.Background()

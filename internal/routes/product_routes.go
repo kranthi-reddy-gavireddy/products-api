@@ -2,24 +2,31 @@ package routes
 
 import (
 	"products-api/internal/handlers"
-	"products-api/internal/server"
+	"products-api/middeware"
+
+	"github.com/gofiber/fiber/v2"
 )
 
+type IProductRoutes interface {
+	RegisterRoutes(engine fiber.Router)
+}
+
 type ProductRoutes struct {
-	handler handlers.ProductHandler
+	handler handlers.IProductHandler
 }
 
-func NewProductRoutes(handler handlers.ProductHandler) *ProductRoutes {
-	return &ProductRoutes{handler: handler}
-}
-
-func (r *ProductRoutes) RegisterRoutes(server *server.FiberServer) {
+func (r *ProductRoutes) RegisterRoutes(engine fiber.Router) {
 	//I want to set /products as the base route for product-related endpoints
-	group := server.App.Group("/api/products")
-	group.Post("", r.handler.CreateProduct)
-	group.Get("", r.handler.FilterProducts)
-	group.Get("/id/:id", r.handler.GetByID)
-	group.Delete("/id/:id", r.handler.Delete)
+	group := engine.Group("/api/products")
+	group.Post("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Create))))
+	group.Put("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Update))))
+	group.Get("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Get))))
+	group.Get("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.GetByID))))
+	group.Delete("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Delete))))
 	//group.Get("/search", r.handler.FilterProducts)
 
+}
+
+func New(handler handlers.IProductHandler) IProductRoutes {
+	return &ProductRoutes{handler: handler}
 }

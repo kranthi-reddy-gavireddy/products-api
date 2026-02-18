@@ -2,12 +2,13 @@ package middeware
 
 import (
 	"products-api/logger"
+	ctx "products-api/utils/context"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
-func CorrelationMiddleWare() func(c *fiber.Ctx) error {
+func CorrelationMiddleWare(next func(c *ctx.Context) error) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		correlationId := c.Get("X-Correlation-ID")
 		if correlationId == "" {
@@ -16,6 +17,12 @@ func CorrelationMiddleWare() func(c *fiber.Ctx) error {
 		c.Locals("CorrelationID", correlationId)
 		c.Set("X-Correlation-ID", correlationId)
 		logger.WithCorrelationID(correlationId)
-		return c.Next()
+		context := ctx.Context{
+			CorrelationID: correlationId,
+			Logger:        logger.WithCorrelationID(correlationId),
+			Ctx:           c,
+		}
+		c.Locals("Context", &context)
+		return next(&context)
 	}
 }

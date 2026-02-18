@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"products-api/internal/config"
 	"products-api/internal/database"
 	"products-api/internal/handlers"
 	"products-api/internal/repository"
@@ -14,7 +15,6 @@ import (
 	"products-api/internal/services"
 	"products-api/logger"
 	"products-api/message-broker/listeners"
-	"products-api/middeware"
 	"strconv"
 	"syscall"
 	"time"
@@ -26,6 +26,8 @@ import (
 func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	logger := logger.New()
+
 	defer stop()
 
 	// Listen for the interrupt signal.
@@ -53,21 +55,31 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 
 func main() {
 
+	logger := logger.New()
+
+	logger.Infof("Product API Service Starting...")
+
+	err := config.LoadConfig()
+	if err != nil {
+		logger.Errorf("Error loading config: %v", err)
+		return
+	}
+
 	server := server.New()
-	server.App.Use(middeware.CorrelationMiddleWare())
-	server.App.Use(middeware.ErrorMiddleware())
 	server.RegisterFiberRoutes()
+
 	dbInstance := database.New().GetDB()
-	productRepo := repository.NewProductRepository(dbInstance)
-	prodcutService := services.NewProductService(productRepo)
-	productHandler := handlers.NewProductHandler(prodcutService)
-	productRoutes := routes.NewProductRoutes(*productHandler)
-	productRoutes.RegisterRoutes(server)
-	// Add message processors for your queues
+
+	productRepo := repository.New(dbInstance)
+	prodcutService := services.New(productRepo)
+	productHandler := handlers.New(prodcutService)
+	productRoutes := routes.New(productHandler)
+	productRoutes.RegisterRoutes(server.App)
+
 	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
 		return listeners.HandleOrderCreation(msg, prodcutService)
 	})
-	// Start background message processors
+
 	server.StartMessageProcessors()
 
 	// Create a done channel to signal when the shutdown is complete

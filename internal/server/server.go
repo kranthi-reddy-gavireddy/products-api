@@ -36,6 +36,7 @@ type MessageProcessor struct {
 func New() *FiberServer {
 	// Load AWS config
 	cfg, err := config.LoadDefaultConfig(context.TODO())
+	logger := logger.New()
 	if err != nil {
 		logger.Errorf("unable to load AWS config: %v", err)
 		// Continue without SNS if config fails
@@ -62,21 +63,33 @@ func New() *FiberServer {
 	return server
 }
 
+func (s *FiberServer) AddMiddleware(mwf ...fiber.Handler) {
+
+	for _, mw := range mwf {
+		s.App.Use(mw)
+	}
+
+}
+
 // AddMessageProcessor adds a new message processor for a queue
 func (s *FiberServer) AddMessageProcessor(queueURL string, handler func(msg *types.Message) error) {
+
 	processor := &MessageProcessor{
 		queueURL: queueURL,
 		handler:  handler,
 	}
+
 	s.processors = append(s.processors, processor)
 }
 
 // StartMessageProcessors starts all registered message processors
 func (s *FiberServer) StartMessageProcessors() {
+
 	for _, processor := range s.processors {
 		s.wg.Add(1)
 		go s.processQueue(processor)
 	}
+
 }
 
 // StopMessageProcessors stops all message processors
@@ -88,7 +101,7 @@ func (s *FiberServer) StopMessageProcessors() {
 // processQueue continuously processes messages from a queue
 func (s *FiberServer) processQueue(processor *MessageProcessor) {
 	defer s.wg.Done()
-
+	logger := logger.New()
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -128,4 +141,12 @@ func (s *FiberServer) processQueue(processor *MessageProcessor) {
 			}
 		}
 	}
+}
+
+func (s *FiberServer) AddMiddlewares(mwfs ...fiber.Handler) {
+
+	for _, mwf := range mwfs {
+		s.App.Use(mwf)
+	}
+
 }

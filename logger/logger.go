@@ -16,11 +16,24 @@ const (
 	missingArgMessage      = "missing argument"
 )
 
+type BaseLogger struct {
+	zerolog.Logger
+}
+
 /*
 Logger interface
 Allows mocking & decoupling from zerolog
 */
 type ZeroLogger interface {
+	Infof(msg string, v ...interface{})
+	Errorf(msg string, v ...interface{})
+	Warnf(msg string, v ...interface{})
+	Debugf(msg string, v ...interface{})
+	InfoWithFields(msg string, fields map[string]interface{})
+	ErrorWithFields(err error, msg string, fields map[string]interface{})
+	ErrorMsg(err error, msg string)
+	WarnWithFields(msg string, fields map[string]interface{})
+	DebugWithFields(msg string, fields map[string]interface{})
 	Error() *zerolog.Event
 	Info() *zerolog.Event
 	Warn() *zerolog.Event
@@ -51,8 +64,9 @@ func setDefaultLogLevel() {
 /*
 Allow injecting a custom logger (useful for tests)
 */
-func SetLogger(baseLogger ZeroLogger) {
+func SetLogger(baseLogger ZeroLogger) ZeroLogger {
 	loggerInstance = baseLogger
+	return loggerInstance
 }
 
 /*
@@ -65,8 +79,8 @@ func logger() ZeroLogger {
 
 	zerolog.TimeFieldFormat = time.RFC1123Z
 	baseLogger := baseLogger()
-	SetLogger(&baseLogger)
-	return loggerInstance
+	//SetLogger(&baseLogger)
+	return &BaseLogger{Logger: baseLogger}
 }
 
 func baseLogger() zerolog.Logger {
@@ -90,9 +104,9 @@ func InvalidArg(argName string) {
 		Msg(invalidArgMessage)
 }
 
-func WithCorrelationID(cid string) {
+func WithCorrelationID(cid string) ZeroLogger {
 	logger := baseLogger().With().Str("cid", cid).Logger()
-	SetLogger(&logger)
+	return &BaseLogger{Logger: logger}
 }
 
 func InvalidArgValue(argName string, argValue interface{}) {
@@ -103,22 +117,16 @@ func InvalidArgValue(argName string, argValue interface{}) {
 		Msg(invalidArgValueMessage)
 }
 
-func MissingArg(argName string) {
-	logger().
-		Error().
-		Str("arg", argName).
-		Msg(missingArgMessage)
+func (b *BaseLogger) MissingArg(argName string) {
+	b.Logger.Error().Str("arg", argName).Msg(missingArgMessage)
 }
 
-func Error(err error, msg string) {
-	logger().
-		Error().
-		Err(err).
-		Msg(msg)
+func (b *BaseLogger) ErrorMsg(err error, msg string) {
+	b.Logger.Error().Err(err).Msg(msg)
 }
 
-func ErrorWithFields(err error, msg string, fields map[string]interface{}) {
-	log := logger().With().Fields(fields).Logger()
+func (b *BaseLogger) ErrorWithFields(err error, msg string, fields map[string]interface{}) {
+	log := b.With().Fields(fields).Logger()
 	log.Error().Err(err).Msg(msg)
 }
 
@@ -126,12 +134,12 @@ func ErrorWithFields(err error, msg string, fields map[string]interface{}) {
 	Info helpers
 */
 
-func Infof(msg string, v ...interface{}) {
-	logger().Info().Msgf(msg, v...)
+func (b *BaseLogger) Infof(msg string, v ...interface{}) {
+	b.Logger.Info().Msgf(msg, v...)
 }
 
-func InfoWithFields(msg string, fields map[string]interface{}) {
-	log := logger().With().Fields(fields).Logger()
+func (b *BaseLogger) InfoWithFields(msg string, fields map[string]interface{}) {
+	log := b.With().Fields(fields).Logger()
 	log.Info().Msg(msg)
 }
 
@@ -139,12 +147,12 @@ func InfoWithFields(msg string, fields map[string]interface{}) {
 	Warn helpers
 */
 
-func Warnf(msg string, v ...interface{}) {
-	logger().Warn().Msgf(msg, v...)
+func (b *BaseLogger) Warnf(msg string, v ...interface{}) {
+	b.Logger.Warn().Msgf(msg, v...)
 }
 
-func WarnWithFields(msg string, fields map[string]interface{}) {
-	log := logger().With().Fields(fields).Logger()
+func (b *BaseLogger) WarnWithFields(msg string, fields map[string]interface{}) {
+	log := b.With().Fields(fields).Logger()
 	log.Warn().Msg(msg)
 }
 
@@ -152,15 +160,20 @@ func WarnWithFields(msg string, fields map[string]interface{}) {
 	Debug helpers
 */
 
-func Debugf(msg string, v ...interface{}) {
-	logger().Debug().Msgf(msg, v...)
+func (b *BaseLogger) Debugf(msg string, v ...interface{}) {
+	b.Logger.Debug().Msgf(msg, v...)
 }
 
-func DebugWithFields(msg string, fields map[string]interface{}) {
-	log := logger().With().Fields(fields).Logger()
+func (b *BaseLogger) DebugWithFields(msg string, fields map[string]interface{}) {
+	log := b.With().Fields(fields).Logger()
 	log.Debug().Msg(msg)
 }
 
-func Errorf(msg string, v ...interface{}) {
-	logger().Error().Msgf(msg, v...)
+func (b *BaseLogger) Errorf(msg string, v ...interface{}) {
+	b.Logger.Error().Msgf(msg, v...)
+}
+
+func New() ZeroLogger {
+	logger := baseLogger()
+	return &BaseLogger{Logger: logger}
 }

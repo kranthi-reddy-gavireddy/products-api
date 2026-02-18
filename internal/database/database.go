@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
+	"products-api/internal/config"
 	"products-api/logger"
 	"strconv"
 	"time"
@@ -32,23 +32,9 @@ type service struct {
 	db *sql.DB
 }
 
-var (
-	database   = os.Getenv("DB_DATABASE")
-	password   = os.Getenv("DB_PASSWORD")
-	username   = os.Getenv("DB_USERNAME")
-	port       = os.Getenv("DB_PORT")
-	host       = os.Getenv("DB_HOST")
-	schema     = os.Getenv("DB_SCHEMA")
-	DBInstance *service
-)
-
 func New() Service {
-	// Reuse Connection
-	if DBInstance != nil {
-		return DBInstance
-	}
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
-	db, err := waitForDB(connStr)
+
+	db, err := waitForDB(config.AppConfig.DBURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,20 +49,22 @@ func New() Service {
 		log.Fatal("Failed to run migrations:", err)
 	}
 
-	DBInstance = &service{
+	return &service{
 		db: db,
 	}
-	return DBInstance
+
 }
 func waitForDB(connStr string) (*sql.DB, error) {
 	var db *sql.DB
 	var err error
 
+	logger := logger.New()
+
 	for i := 1; i <= 15; i++ {
 		db, err = sql.Open("pgx", connStr)
 		if err == nil {
 			if err = db.Ping(); err == nil {
-				log.Println("✅ database connected")
+				logger.Infof("✅ database connected")
 				return db, nil
 			}
 		}
@@ -144,7 +132,8 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	logger.Infof("Disconnected from database: %s", database)
+	logger := logger.New()
+	logger.Infof("Disconnected from database")
 	return s.db.Close()
 }
 
