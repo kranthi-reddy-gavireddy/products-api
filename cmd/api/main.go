@@ -15,6 +15,7 @@ import (
 	"products-api/internal/services"
 	"products-api/logger"
 	"products-api/message-broker/listeners"
+	"products-api/utils/cache"
 	"strconv"
 	"syscall"
 	"time"
@@ -62,6 +63,12 @@ func main() {
 	err := config.LoadConfig()
 	if err != nil {
 		logger.Errorf("Error loading config: %v", err)
+		return
+	}
+
+	err = cache.Set()
+	if err != nil {
+		logger.Errorf("Error setting up cache: %v", err)
 		return
 	}
 

@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	DBURL string
-	Port  string
-	Env   string
+	DBURL    string
+	Port     string
+	Env      string
+	RedisURL string
 }
 
 var AppConfig *Config
@@ -20,6 +21,11 @@ func LoadConfig() error {
 	config.DBURL = os.Getenv("DBURL")
 	if config.DBURL == "" {
 		return errors.New("DB URL not provided in environment variables")
+	}
+
+	config.RedisURL = os.Getenv("RedisURL")
+	if config.RedisURL == "" {
+		return errors.New("Redis URL not provided in environment variables")
 	}
 
 	config.Port = os.Getenv("PORT")

@@ -2,14 +2,20 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	apperrors "products-api/app-errors"
 	"products-api/dtos"
 	"products-api/internal/models"
 	"products-api/internal/repository"
 	"products-api/logger"
+	"time"
 
+	"products-api/utils/cache"
 	ctx "products-api/utils/context"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type IProductService interface {
@@ -18,7 +24,7 @@ type IProductService interface {
 	UpdateCount(ctx context.Context, id string, sold int) (*models.Product, error)
 	Get(ctx *ctx.Context, limit, offset int) ([]models.Product, error)
 	Filter(ctx *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]models.Product, error)
-	GetByID(ctx *ctx.Context, id string) (*models.Product, error)
+	GetByID(ctx *ctx.Context, id string) (*dtos.ProductResponse, error)
 	Delete(ctx *ctx.Context, id string) error
 }
 
@@ -57,6 +63,7 @@ func (s *ProductService) Create(context *ctx.Context, req *dtos.ProductRequest) 
 		},
 	}
 
+	cacheData(context, res)
 	context.Logger.Infof("Created product successfully: %+v", res)
 	return res, nil
 }
@@ -91,6 +98,8 @@ func (s *ProductService) Update(ctx *ctx.Context, id string, req *dtos.ProductRe
 			SellerID: product.SellerID,
 		},
 	}
+
+	cacheData(ctx, res)
 
 	ctx.Logger.Infof("Updated product successfully: %+v", res)
 	return res, nil
@@ -152,7 +161,13 @@ func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice
 	return products, nil
 }
 
-func (s *ProductService) GetByID(ctx *ctx.Context, id string) (*models.Product, error) {
+func (s *ProductService) GetByID(ctx *ctx.Context, id string) (*dtos.ProductResponse, error) {
+
+	res := getCachedData(ctx, id)
+	if res != nil {
+		ctx.Logger.Infof("Returning cached product for ID %s: %v", id, res)
+		return res, nil
+	}
 
 	product, err := s.repo.GetByID(ctx.Context(), id)
 	if err != nil {
@@ -160,8 +175,21 @@ func (s *ProductService) GetByID(ctx *ctx.Context, id string) (*models.Product, 
 		return nil, apperrors.DatabaseError()
 	}
 
+	res = &dtos.ProductResponse{
+		ID: product.ID,
+		ProductBase: dtos.ProductBase{
+			Name:     product.Name,
+			Price:    product.Price,
+			Category: product.Category,
+			Quantity: product.Quantity,
+			SellerID: product.SellerID,
+		},
+	}
+
+	cacheData(ctx, res)
+
 	ctx.Logger.Infof("Retrieved product by ID %s: %v", id, product)
-	return product, nil
+	return res, nil
 }
 
 func (s *ProductService) Delete(ctx *ctx.Context, id string) error {
@@ -179,10 +207,64 @@ func (s *ProductService) Delete(ctx *ctx.Context, id string) error {
 		return apperrors.DatabaseError()
 	}
 
+	removeCache(ctx, id)
+
 	ctx.Logger.Infof("Deleted product by ID %s", id)
 	return nil
 }
 
 func New(repo repository.IProductRepository) IProductService {
 	return &ProductService{repo: repo}
+}
+
+func cacheData(ctx *ctx.Context, res *dtos.ProductResponse) {
+
+	rdb := cache.New().Client
+
+	bytes, err := json.Marshal(res)
+	if err != nil {
+		ctx.Logger.Errorf("Error marshaling product response for caching with ID %s: %v", res.ID, err)
+		return
+	}
+
+	err = rdb.Set(ctx.Context(), res.ID, bytes, 24*time.Hour).Err()
+	if err != nil {
+		ctx.Logger.Errorf("Error caching product with ID %s: %v", res.ID, err)
+	}
+}
+
+func removeCache(ctx *ctx.Context, id string) {
+
+	rdb := cache.New().Client
+
+	err := rdb.Del(ctx.Context(), id).Err()
+	if err != nil {
+		ctx.Logger.Errorf("Error removing cached product with ID %s: %v", id, err)
+	}
+}
+
+func getCachedData(ctx *ctx.Context, id string) *dtos.ProductResponse {
+
+	rdb := cache.New().Client
+
+	var cachedRes dtos.ProductResponse
+	bytes, err := rdb.Get(ctx.Context(), id).Bytes()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			ctx.Logger.Infof("No cached product found with ID %s", id)
+			return nil
+		}
+
+		ctx.Logger.Errorf("Error retrieving cached product with ID %s: %v", id, err)
+		return nil
+	}
+
+	err = json.Unmarshal(bytes, &cachedRes)
+	if err != nil {
+		ctx.Logger.Errorf("Error unmarshaling cached product with ID %s: %v", id, err)
+		return nil
+	}
+
+	ctx.Logger.Infof("Retrieved cached product with ID %s: %v", id, cachedRes)
+	return &cachedRes
 }
