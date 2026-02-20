@@ -126,6 +126,29 @@ func (s *ProductService) UpdateCount(context context.Context, id string, sold in
 		return nil, apperrors.DatabaseError()
 	}
 
+	res := &dtos.ProductResponse{
+		ID: product.ID,
+		ProductBase: dtos.ProductBase{
+			Name:     product.Name,
+			Price:    product.Price,
+			Category: product.Category,
+			Quantity: product.Quantity,
+			SellerID: product.SellerID,
+		},
+	}
+
+	rdb := cache.New().Client
+
+	bytes, err := json.Marshal(res)
+	if err != nil {
+		logger.Errorf("Error marshaling product response for caching with ID %s: %v", res.ID, err)
+	} else {
+		err = rdb.Set(context, res.ID, bytes, 24*time.Hour).Err()
+		if err != nil {
+			logger.Errorf("Error caching product with ID %s: %v", res.ID, err)
+		}
+	}
+
 	logger.Infof("Updated product count successfully for product  %v", product)
 	return product, nil
 }
