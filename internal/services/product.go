@@ -23,7 +23,7 @@ type IProductService interface {
 	Update(ctx *ctx.Context, id string, req *dtos.ProductRequest) (*dtos.ProductResponse, error)
 	UpdateCount(ctx context.Context, id string, sold int) (*models.Product, error)
 	Get(ctx *ctx.Context, limit, offset int) ([]models.Product, error)
-	Filter(ctx *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]models.Product, error)
+	Filter(ctx *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]dtos.ProductResponse, error)
 	GetByID(ctx *ctx.Context, id string) (*dtos.ProductResponse, error)
 	Delete(ctx *ctx.Context, id string) error
 }
@@ -169,7 +169,7 @@ func (s *ProductService) Get(ctx *ctx.Context, limit, offset int) ([]models.Prod
 	return products, nil
 }
 
-func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]models.Product, error) {
+func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]dtos.ProductResponse, error) {
 
 	var err error
 
@@ -181,7 +181,22 @@ func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice
 	}
 
 	context.Logger.Infof("Filtered products: %v", products)
-	return products, nil
+
+	res := make([]dtos.ProductResponse, len(products))
+	for i, product := range products {
+		res[i] = dtos.ProductResponse{
+			ID: product.ID,
+			ProductBase: dtos.ProductBase{
+				Name:     product.Name,
+				Price:    product.Price,
+				Category: product.Category,
+				Quantity: product.Quantity,
+				SellerID: product.SellerID,
+			},
+		}
+	}
+
+	return res, nil
 }
 
 func (s *ProductService) GetByID(ctx *ctx.Context, id string) (*dtos.ProductResponse, error) {
@@ -211,19 +226,19 @@ func (s *ProductService) GetByID(ctx *ctx.Context, id string) (*dtos.ProductResp
 
 	cacheData(ctx, res)
 
-	ctx.Logger.Infof("Retrieved product by ID %s: %v", id, product)
+	ctx.Logger.Infof("Retrieved product by ID %s: %v", id, res)
 	return res, nil
 }
 
 func (s *ProductService) Delete(ctx *ctx.Context, id string) error {
 
-	product, err := s.repo.GetByID(ctx.Context(), id)
+	_, err := s.repo.GetByID(ctx.Context(), id)
 	if err != nil {
 		ctx.Logger.Errorf("Error retrieving product by ID %s: %v", id, err)
 		return apperrors.DatabaseError()
 	}
 
-	ctx.Logger.Infof("Deleting product: %v", product)
+	ctx.Logger.Infof("Deleting product with ID %s", id)
 	err = s.repo.DeleteProduct(ctx.Context(), id)
 	if err != nil {
 		ctx.Logger.Errorf("Error deleting product by ID %s: %v", id, err)
