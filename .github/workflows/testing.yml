@@ -27,6 +27,7 @@ jobs:
         DB_PASSWORD=test
         DB_SCHEMA=public
         DBURL=postgresql://test:test@psql_bp:5432/test
+        RedisURL=redis://redis:6379
         # AWS Configuration (dummy for LocalStack)
         AWS_ACCESS_KEY_ID=test
         AWS_SECRET_ACCESS_KEY=test

@@ -14,6 +14,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    volumes:
+      - psql_volume_bp:/var/lib/postgresql/data
   localstack:
     image: localstack/localstack:3.0
     restart: unless-stopped
@@ -31,6 +33,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 15
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   app:
     build: .
