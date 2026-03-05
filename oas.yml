@@ -1,0 +1,496 @@
+openapi: 3.1.0
+info:
+  title: Swagger Petstore - OpenAPI 3.1
+  description: |-
+    This is a sample Pet Store Server based on the OpenAPI 3.1 specification.  You can find out more about
+    Swagger at [https://swagger.io](https://swagger.io). In the third iteration of the pet store, we've switched to the design first approach!
+    You can now help us improve the API whether it's by making changes to the definition itself or to the code.
+    That way, with time, we can improve the API in general, and expose some of the new features in OAS3.
+
+    Some useful links:
+    - [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)
+    - [The source API definition for the Pet Store](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)
+
+  termsOfService: https://swagger.io/terms/
+  contact:
+    email: apiteam@swagger.io
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.12
+externalDocs:
+  description: Find out more about Swagger
+  url: https://swagger.io
+servers:
+  - url: http:localhost:8080/api
+tags:
+  - name: pet
+    description: Everything about your Pets
+    externalDocs:
+      description: Find out more
+      url: http://swagger.io
+  - name: store
+    description: Access to Petstore orders
+    externalDocs:
+      description: Find out more about our store
+      url: http://swagger.io
+  - name: user
+    description: Operations about user
+  - name: product
+    description: Operations about product
+paths:
+  /products:
+    post:
+      tags:
+        - product
+      summary: Add a new product for the seller
+      x-eov-operation-handler: routes
+      operationId: addProduct
+      requestBody:
+        description: Product object that needs to be added to the DB
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '201':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags:
+        - product
+      summary: Get products by filter params
+      parameters:
+        - in: query
+          name: minPrice
+          schema:
+            $ref: '#/components/schemas/FilterParams/properties/minPrice'
+
+        - in: query
+          name: maxPrice
+          schema:
+            $ref: '#/components/schemas/FilterParams/properties/maxPrice'
+
+        - in: query
+          name: category
+          schema:
+            $ref: '#/components/schemas/FilterParams/properties/category'
+
+        - in: query
+          name: sortField
+          schema:
+            $ref: '#/components/schemas/FilterParams/properties/sortField'
+
+        - in: query
+          name: page
+          schema:
+            $ref: '#/components/schemas/FilterParams/properties/page'
+
+        - in: query
+          name: limit
+          schema:
+            $ref: '#/components/schemas/FilterParams/properties/limit'
+      operationId: getProducts
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductResponse'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductResponse'
+  /products/id/{id}:
+    put:
+      tags:
+        - product
+      summary: Update product by ID
+      operationId: updateProductById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            examples: ["c1403eaf-4844-44b0-9336-b4aabaf31c90"]
+      requestBody:
+        description: Product object that needs to be updated in the DB
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+    get:
+      tags:
+        - product
+      summary: Get product by ID
+      operationId: getProductById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            examples: ["c1403eaf-4844-44b0-9336-b4aabaf31c90"]
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          description: Invalid ID supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - product
+      summary: Delete product by ID
+      x-eov-operation-handler: routes
+      operationId: deleteProductById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            examples: ["c1403eaf-4844-44b0-9336-b4aabaf31c90"]
+      responses:
+        '204':
+          description: Successful operation
+        '400':
+          description: Invalid ID supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    FilterParams:
+      type: object
+      properties:
+        minPrice:
+          type: number
+          format: double
+          minimum: 0
+          examples: [100.50]
+
+        maxPrice:
+          type: number
+          format: double
+          minimum: 0
+          examples: [1000.00]
+
+        category:
+          type: string
+          minLength: 3
+          maxLength: 100
+          pattern: "^[A-Za-z0-9 ]+$"
+          examples: ["Electronics"]
+
+        sortField:
+          type: string
+          examples: ["price"]
+
+        # Embedded struct
+        page:
+          type: integer
+          minimum: 1
+          examples: [1]
+
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+    AlphanumSpaceString_3_100:
+      type: string
+      minLength: 3
+      maxLength: 100
+      pattern: "^[a-zA-Z0-9]+( [a-zA-Z0-9]+)*$"
+      examples: ["test 123"]
+    ProductBase:
+      type: object
+      required: 
+        - name
+        - price
+        - quantity
+        - sellerId
+      properties: 
+        name:
+          $ref: "#/components/schemas/AlphanumSpaceString_3_100"
+        price:
+          type: number
+          format: float
+          examples: [10.99]
+          minimum: 0.5
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        sellerId:
+          $ref: "#/components/schemas/AlphanumSpaceString_3_100"
+    ProductRequest:
+      allOf:
+       - $ref: "#/components/schemas/ProductBase"
+    ProductResponse:
+       allOf:
+        - $ref: "#/components/schemas/IDObj"
+        - $ref: "#/components/schemas/ProductBase"
+    IDObj:
+      type: object
+      properties:
+        id:
+          type: string
+          examples: ["c1403eaf-4844-44b0-9336-b4aabaf31c90"]
+        
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          examples: [10]
+        petId:
+          type: integer
+          format: int64
+          examples: [198772]
+        quantity:
+          type: integer
+          format: int32
+          examples: [7]
+        shipDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: Order Status
+          examples: [approved]
+          enum:
+            - placed
+            - approved
+            - delivered
+        complete:
+          type: boolean
+      
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          examples: [100000]
+        username:
+          type: string
+          examples: [fehguy]
+        address:
+          type: array
+          
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          examples: [437 Lytton]
+        city:
+          type: string
+          examples: [Palo Alto]
+        state:
+          type: string
+          examples: [CA]
+        zip:
+          type: string
+          examples: ['94301']
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          examples: [1]
+        name:
+          type: string
+          examples: [Dogs]
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          examples: [10]
+        username:
+          type: string
+          examples: [theUser]
+        firstName:
+          type: string
+          examples: [John]
+        lastName:
+          type: string
+          examples: [James]
+        email:
+          type: string
+          examples: [john@email.com]
+        password:
+          type: string
+          examples: ['12345']
+        phone:
+          type: string
+          examples: ['12345']
+        userStatus:
+          type: integer
+          description: User Status
+          format: int32
+          examples: [1]
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    Pet:
+      required:
+        - name
+        - photoUrls
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          examples: [10]
+        name:
+          type: string
+          examples: [doggie]
+        category:
+          $ref: '#/components/schemas/Category'
+        photoUrls:
+          type: array
+        tags:
+          type: array
+         
+        status:
+          type: string
+          description: pet status in the store
+          enum:
+            - available
+            - pending
+            - sold
+     
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        type:
+          type: string
+        message:
+          type: string
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
+  requestBodies:
+    Pet:
+      description: Pet object that needs to be added to the store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Pet'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Pet'
+    UserArray:
+      description: List of user object
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/User'
+  securitySchemes:
+    petstore_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://petstore3.swagger.io/oauth/authorize
+          scopes:
+            "write:pets": modify pets in your account
+            "read:pets": read your pets
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header

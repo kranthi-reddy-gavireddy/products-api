@@ -10,7 +10,9 @@ import (
 	"products-api/internal/database"
 	"products-api/internal/handlers"
 	"products-api/internal/repository"
+	"products-api/internal/oas"
 	"products-api/internal/routes"
+	"products-api/middeware"
 	"products-api/internal/server"
 	"products-api/internal/services"
 	"products-api/logger"
@@ -21,6 +23,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/gofiber/fiber/v2"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -80,8 +83,28 @@ func main() {
 	productRepo := repository.New(dbInstance)
 	prodcutService := services.New(productRepo)
 	productHandler := handlers.New(prodcutService)
-	productRoutes := routes.New(productHandler)
-	productRoutes.RegisterRoutes(server.App)
+
+	// Build operationId -> handler map (similar to express-openapi-validator operationHandlers)
+	// Wrap handlers with the same middleware you use elsewhere.
+	handlerMap := map[string]func(*fiber.Ctx) error{
+		"addProduct":       productHandler.Create,
+		"getProducts":      productHandler.Get,
+		"getProductById":   productHandler.GetByID,
+		"updateProductById": productHandler.Update,
+		"deleteProductById": productHandler.Delete,
+	}
+
+	// Convert to fiber.Handler map with middleware applied
+	handlersWithMiddleware := make(map[string]fiber.Handler)
+	for op, fn := range handlerMap {
+		handlersWithMiddleware[op] = middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(fn)))
+	}
+
+	// Register routes from OpenAPI spec (oas.yml at project root)
+	if err := oas.RegisterFromSpec(server.App, handlersWithMiddleware, "oas.yml"); err != nil {
+		logger.Errorf("failed registering routes from oas spec: %v", err)
+		return
+	}
 
 	server.AddMessageProcessor("http://localstack:4566/000000000000/OrderCreatedTopic", func(msg *types.Message) error {
 		return listeners.HandleOrderCreation(msg, prodcutService)
