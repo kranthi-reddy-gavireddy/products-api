@@ -158,7 +158,7 @@ func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
 	suite.NoError(err, "expected no error while filtering products by params")
 	suite.Len(result, 2, "expected two products")
 	// Note: Exact match may fail due to time fields, so check key fields
-	for i, p := range result {
+	for i, p := range result.Products {
 		assert.Equal(suite.T(), expectedProducts[i].ID, p.ID)
 		assert.Equal(suite.T(), expectedProducts[i].Name, p.Name)
 		assert.Equal(suite.T(), expectedProducts[i].Price, p.Price)

@@ -22,8 +22,8 @@ type IProductService interface {
 	Create(context *ctx.Context, req *dtos.ProductRequest) (*dtos.ProductResponse, error)
 	Update(ctx *ctx.Context, id string, req *dtos.ProductRequest) (*dtos.ProductResponse, error)
 	UpdateCount(ctx context.Context, id string, sold int) (*models.Product, error)
-	Get(ctx *ctx.Context, limit, offset int) ([]models.Product, error)
-	Filter(ctx *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]dtos.ProductResponse, error)
+	Get(ctx *ctx.Context, pagination *dtos.PageNation) ([]models.Product, error)
+	Filter(ctx *ctx.Context, minPrice float64, maxPrice float64, category string, sortClause []dtos.SortClause, pagination *dtos.PageNation) (*dtos.ListProductsResponse, error)
 	GetByID(ctx *ctx.Context, id string) (*dtos.ProductResponse, error)
 	Delete(ctx *ctx.Context, id string) error
 }
@@ -154,12 +154,12 @@ func (s *ProductService) UpdateCount(context context.Context, id string, sold in
 }
 
 // GetProducts retrieves all products
-func (s *ProductService) Get(ctx *ctx.Context, limit, offset int) ([]models.Product, error) {
+func (s *ProductService) Get(ctx *ctx.Context, pagination *dtos.PageNation) ([]models.Product, error) {
 
 	var err error
 
-	ctx.Logger.Infof("Retrieving products with limit %d and offset %d", limit, offset)
-	products, err := s.repo.GetAll(ctx.Context(), limit, offset)
+	ctx.Logger.Infof("Retrieving products with limit %d and offset %d", pagination.Limit, pagination.Page)
+	products, err := s.repo.GetAll(ctx.Context(), pagination.Limit, pagination.Page)
 	if err != nil {
 		ctx.Logger.Errorf("Error retrieving products: %v", err)
 		return nil, apperrors.DatabaseError()
@@ -169,22 +169,32 @@ func (s *ProductService) Get(ctx *ctx.Context, limit, offset int) ([]models.Prod
 	return products, nil
 }
 
-func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice float64, category string, limit int, offset int, sortClause []dtos.SortClause) ([]dtos.ProductResponse, error) {
+func (s *ProductService) Filter(context *ctx.Context, minPrice, maxPrice float64, category string, sortClause []dtos.SortClause, pagination *dtos.PageNation) (*dtos.ListProductsResponse, error) {
 
 	var err error
 
-	context.Logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, limit, offset)
-	products, err := s.repo.FilterProducts(context.Context(), minPrice, maxPrice, category, sortClause, limit, offset)
+	if pagination.Page == 0 {
+		pagination.Page = 1
+	}
+
+	if pagination.Limit == 0 {
+		pagination.Limit = 20
+	}
+
+	offset := (pagination.Page - 1) * pagination.Limit
+
+	context.Logger.Infof("Filtering products with minPrice: %f, maxPrice: %f, category: %s, sorting %v limit: %d, offset: %d", minPrice, maxPrice, category, sortClause, pagination.Limit, offset)
+	productsList, err := s.repo.FilterProducts(context.Context(), minPrice, maxPrice, category, sortClause, pagination.Limit, offset)
 	if err != nil {
 		context.Logger.Errorf("Error filtering products: %v", err)
 		return nil, apperrors.DatabaseError()
 	}
 
-	context.Logger.Infof("Filtered products: %v", products)
+	context.Logger.Infof("Filtered products: %v", productsList)
 
-	res := make([]dtos.ProductResponse, len(products))
-	for i, product := range products {
-		res[i] = dtos.ProductResponse{
+	products := make([]dtos.ProductResponse, len(productsList.Products))
+	for i, product := range productsList.Products {
+		products[i] = dtos.ProductResponse{
 			ID: product.ID,
 			ProductBase: dtos.ProductBase{
 				Name:     product.Name,
@@ -194,6 +204,13 @@ func (s *ProductService) Filter(context *ctx.Context, minPrice float64, maxPrice
 				SellerID: product.SellerID,
 			},
 		}
+	}
+
+	res := &dtos.ListProductsResponse{
+		Products:   products,
+		TotalCount: productsList.TotalCount,
+		Page:       pagination.Page,
+		Limit:      pagination.Limit,
 	}
 
 	return res, nil
