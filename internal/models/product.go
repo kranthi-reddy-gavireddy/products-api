@@ -9,3 +9,8 @@ type Product struct {
 	Quantity int     `json:"quantity"`
 	Category string  `json:"category"`
 }
+
+type ListProducts struct {
+	Products   []Product `json:"products"`
+	TotalCount int       `json:"total_count"`
+}

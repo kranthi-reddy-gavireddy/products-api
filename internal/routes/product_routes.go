@@ -20,7 +20,7 @@ func (r *ProductRoutes) RegisterRoutes(engine fiber.Router) {
 	group := engine.Group("/api/products")
 	group.Post("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Create))))
 	group.Put("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Update))))
-	group.Get("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Get))))
+	group.Get("", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Filter))))
 	group.Get("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.GetByID))))
 	group.Delete("/id/:id", middeware.CorrelationMiddleWare(middeware.RequestLogger(middeware.ErrorMiddleware(r.handler.Delete))))
 	//group.Get("/search", r.handler.FilterProducts)

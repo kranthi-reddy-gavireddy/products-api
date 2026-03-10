@@ -90,7 +90,7 @@ func (h *ProductHandler) Get(c *ctx.Context) error {
 
 	pagnation.ApplyDefaults()
 
-	products, err := h.productService.Get(c, pagnation.Limit, pagnation.Offset)
+	products, err := h.productService.Get(c, &pagnation)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (h *ProductHandler) Filter(c *ctx.Context) error {
 		return err
 	}
 
-	products, err := h.productService.Filter(c, filter.MinPrice, filter.MaxPrice, filter.Category, filter.Limit, filter.Offset, sortClauses)
+	products, err := h.productService.Filter(c, filter.MinPrice, filter.MaxPrice, filter.Category, sortClauses, &filter.PageNation)
 	if err != nil {
 		return err
 	}

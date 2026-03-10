@@ -9,9 +9,23 @@ type SortClause struct {
 	Direction string
 }
 
+type ListProductsResponse struct {
+	Products   []ProductResponse `json:"products"`
+	TotalCount int               `json:"total_count"`
+	Page       int               `json:"page"`
+	Limit      int               `json:"limit"`
+}
+
 type PageNation struct {
-	Limit  int `query:"limit" validate:"gte=0"`
-	Offset int `query:"offset" validate:"gte=0"`
+	// set default limit
+	Limit int `query:"limit"  validate:"omitempty,gte=0"`
+	Page  int `query:"page" validate:"omitempty,gte=1"`
+}
+
+func (p *PageNation) ApplyDefaults() {
+	if p.Limit == 0 {
+		p.Limit = 20
+	}
 }
 
 type FilterParams struct {
@@ -20,12 +34,6 @@ type FilterParams struct {
 	Category string  `query:"category" validate:"omitempty,min=3,max=100,alphanumspace"`
 	Sort     string  `query:"sortField" validate:"omitempty"`
 	PageNation
-}
-
-func (p *PageNation) ApplyDefaults() {
-	if p.Limit == 0 {
-		p.Limit = 20
-	}
 }
 
 func (f *FilterParams) ApplyDefaults() {

@@ -13,7 +13,7 @@ type IProductRepository interface {
 	UpdateProductCount(ctx context.Context, product *models.Product, sold int) error
 	GetAll(ctx context.Context, limit, offset int) ([]models.Product, error)
 	GetByID(ctx context.Context, id string) (*models.Product, error)
-	FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []dtos.SortClause, limit, offset int) ([]models.Product, error)
+	FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []dtos.SortClause, limit, offset int) (*models.ListProducts, error)
 	DeleteProduct(ctx context.Context, id string) error
 }
 
@@ -91,7 +91,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id string) (*models.Pro
 	return &p, nil
 }
 
-func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []dtos.SortClause, limit, offset int) ([]models.Product, error) {
+func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPrice float64, category string, sortClauses []dtos.SortClause, limit, offset int) (*models.ListProducts, error) {
 
 	filterparameters := " AND price >= $1 AND price <= $2"
 	if category != "" {
@@ -101,16 +101,20 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 	sortOrder := sortQueryGenerator(sortClauses)
 
 	query := GET_ALL_QUERY + filterparameters + sortOrder + " LIMIT $3 OFFSET $4"
+	totalCountQuery := GET_PRODUCTS_COUNT_QUERY + filterparameters
 
 	var (
-		rows *sql.Rows
-		err  error
+		rows       *sql.Rows
+		err        error
+		totalCount int
 	)
 
 	if category != "" {
 		rows, err = r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset, category)
+		r.db.QueryRowContext(ctx, totalCountQuery, minPrice, maxPrice, category).Scan(&totalCount)
 	} else {
 		rows, err = r.db.QueryContext(ctx, query, minPrice, maxPrice, limit, offset)
+		r.db.QueryRowContext(ctx, totalCountQuery, minPrice, maxPrice).Scan(&totalCount)
 	}
 	if err != nil {
 		return nil, err
@@ -121,6 +125,7 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 	var products []models.Product
 	for rows.Next() {
 		var p models.Product
+
 		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.SellerID, &p.Quantity, &p.Category, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -128,7 +133,12 @@ func (r *ProductRepository) FilterProducts(ctx context.Context, minPrice, maxPri
 		products = append(products, p)
 	}
 
-	return products, rows.Err()
+	productsList := &models.ListProducts{
+		Products:   products,
+		TotalCount: totalCount,
+	}
+
+	return productsList, rows.Err()
 }
 
 func (r *ProductRepository) DeleteProduct(ctx context.Context, id string) error {
