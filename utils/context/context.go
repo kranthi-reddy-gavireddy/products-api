@@ -1,7 +1,7 @@
 package context
 
 import (
-	"products-api/logger"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
 
 	"github.com/gofiber/fiber/v2"
 )

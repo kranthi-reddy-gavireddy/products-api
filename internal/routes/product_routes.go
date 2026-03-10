@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"products-api/internal/handlers"
-	"products-api/middeware"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/handlers"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/middeware"
 
 	"github.com/gofiber/fiber/v2"
 )

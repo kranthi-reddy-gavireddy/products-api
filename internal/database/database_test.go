@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"products-api/internal/config"
 	"testing"
 	"time"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/config"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"

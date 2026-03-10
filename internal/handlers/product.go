@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"fmt"
-	apperrors "products-api/app-errors"
-	"products-api/dtos"
-	"products-api/internal/services"
-	ctx "products-api/utils/context"
-	"products-api/utils/helpers"
 	"strings"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/dtos"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/services"
+	ctx "github.com/kranthi-reddy-gavireddy/products-api.git/utils/context"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/utils/helpers"
+
+	apperrors "github.com/kranthi-reddy-gavireddy/products-api.git/app-errors"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"

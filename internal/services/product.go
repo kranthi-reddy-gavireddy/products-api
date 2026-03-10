@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	apperrors "products-api/app-errors"
-	"products-api/dtos"
-	"products-api/internal/models"
-	"products-api/internal/repository"
-	"products-api/logger"
 	"time"
 
-	"products-api/utils/cache"
-	ctx "products-api/utils/context"
+	apperrors "github.com/kranthi-reddy-gavireddy/products-api.git/app-errors"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/dtos"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/models"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/repository"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/utils/cache"
+	ctx "github.com/kranthi-reddy-gavireddy/products-api.git/utils/context"
 
 	"github.com/redis/go-redis/v9"
 )

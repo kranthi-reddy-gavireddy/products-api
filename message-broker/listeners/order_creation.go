@@ -3,12 +3,13 @@ package listeners
 import (
 	"context"
 	"encoding/json"
-	apperrors "products-api/app-errors"
-	"products-api/dtos"
-	"products-api/internal/services"
-	"products-api/logger"
 
-	"products-api/utils/helpers"
+	apperrors "github.com/kranthi-reddy-gavireddy/products-api.git/app-errors"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/dtos"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/services"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/utils/helpers"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-playground/validator/v10"

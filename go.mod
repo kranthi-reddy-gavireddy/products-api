@@ -1,4 +1,4 @@
-module products-api
+module github.com/kranthi-reddy-gavireddy/products-api.git
 
 go 1.25.5
 

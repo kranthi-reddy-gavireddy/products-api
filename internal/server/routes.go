@@ -2,7 +2,8 @@ package server
 
 import (
 	"context"
-	"products-api/logger"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"

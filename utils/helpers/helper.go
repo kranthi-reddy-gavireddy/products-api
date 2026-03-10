@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"products-api/dtos"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/dtos"
 
 	"github.com/go-playground/validator/v10"
 )

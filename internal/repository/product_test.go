@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"products-api/dtos"
-	"products-api/internal/models"
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/dtos"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/models"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
