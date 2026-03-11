@@ -18,7 +18,8 @@ end
 
 Then('I should receive a list of products') do
   expect(@response.code).to eq(200)
-  expect(@response.parsed_response).to be_an(Array)
+  expect(@response.parsed_response).to have_key('products')
+  expect(@response.parsed_response['products']).to be_an(Array)
 end
 
 When('I create a product with name {string}, price {float}, seller_id {string}, quantity {int}, category {string}') do |name, price, seller_id, quantity, category|
