@@ -11,7 +11,7 @@ type SortClause struct {
 
 type ListProductsResponse struct {
 	Products   []ProductResponse `json:"products"`
-	TotalCount int               `json:"total_count"`
+	TotalCount int               `json:"total"`
 	Page       int               `json:"page"`
 	Limit      int               `json:"limit"`
 }

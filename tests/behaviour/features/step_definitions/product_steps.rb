@@ -121,5 +121,10 @@ end
 Then('I should receive the filtered list of products with status {int}') do |status_code|
   expect(@response.code).to eq(status_code)
   #expect data to be an array or nil 
-  expect(@response.parsed_response).to be_an(Array).or be_nil
+  expect(@response.parsed_response).to include('products')
+  expect(@response.parsed_response['products']).to be_an(Array).or be_nil
+  expect(@response.parsed_response).to include('total')
+  expect(@response.parsed_response['total']).to be_an(Integer)
+  expect(@response.parsed_response).to include('limit')
+  expect(@response.parsed_response).to include('page')
 end

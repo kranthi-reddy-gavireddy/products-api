@@ -16,6 +16,7 @@ type BaseModel struct {
 func (b *BaseModel) SetID() {
 	b.ID = generateUniqueID()
 }
+
 func generateUniqueID() string {
 	return uuid.NewString()
 }
