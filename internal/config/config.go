@@ -24,9 +24,7 @@ func LoadConfig() error {
 	}
 
 	config.RedisURL = os.Getenv("RedisURL")
-	if config.RedisURL == "" {
-		return errors.New("Redis URL not provided in environment variables")
-	}
+	// Redis is optional; caching will be disabled if no Redis URL is provided.
 
 	config.Port = os.Getenv("PORT")
 	if config.Port == "" {

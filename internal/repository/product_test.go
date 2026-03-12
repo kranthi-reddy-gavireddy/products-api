@@ -3,8 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -121,7 +119,7 @@ func (suite *ProductRepositoryTestSuite) TestGetAllProducts() {
 }
 
 func (suite *ProductRepositoryTestSuite) TestDeleteProduct() {
-	suite.mock.ExpectExec("DELETE FROM products WHERE .*").WithArgs("1").WillReturnResult(sqlmock.NewResult(1, 1))
+	suite.mock.ExpectExec("UPDATE products SET deleted_at = NOW\\(\\) WHERE .* ").WithArgs("1").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := suite.repo.DeleteProduct(context.Background(), "1")
 	suite.NoError(err, "expected no error while deleting product")
@@ -143,21 +141,18 @@ func (suite *ProductRepositoryTestSuite) TestFilterProducts() {
 	for _, p := range expectedProducts {
 		rows.AddRow(p.ID, p.Name, p.Price, p.SellerID, p.Quantity, p.Category, time.Now(), time.Now())
 	}
-	query := `
-           SELECT id, name, price, seller_id, quantity, category, created_at, updated_at
-           FROM products
-           WHERE 1=1 AND
-		   price >= $1 AND price <= $2
-		   AND category = $5
-		   ORDER BY created_at DESC
-           LIMIT $3 OFFSET $4
-		`
-	suite.mock.ExpectQuery(regexp.QuoteMeta(query)).
+	// The repository filters out soft-deleted products via `deleted_at IS NULL`.
+	suite.mock.ExpectQuery("SELECT .* FROM products WHERE deleted_at IS NULL").
 		WithArgs(15.0, 20.0, 20, 0, category).WillReturnRows(rows)
+
+	// Expect count query for pagination
+	suite.mock.ExpectQuery("SELECT COUNT\\(id\\) FROM products WHERE deleted_at IS NULL").
+		WithArgs(15.0, 20.0, category).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(len(expectedProducts)))
+
 	result, err := suite.repo.FilterProducts(context.Background(), 15.0, 20.0, category, []dtos.SortClause{}, 20, 0)
-	fmt.Println(result)
+	//fmt.Println(result)
 	suite.NoError(err, "expected no error while filtering products by params")
-	suite.Len(result, 2, "expected two products")
+	suite.Len(result.Products, 2, "expected two products")
 	// Note: Exact match may fail due to time fields, so check key fields
 	for i, p := range result.Products {
 		assert.Equal(suite.T(), expectedProducts[i].ID, p.ID)
