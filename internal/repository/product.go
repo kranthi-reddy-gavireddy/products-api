@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"products-api/dtos"
-	"products-api/internal/models"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/dtos"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/models"
 )
 
 type IProductRepository interface {

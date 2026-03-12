@@ -1,8 +1,8 @@
 package middeware
 
 import (
-	"products-api/logger"
-	ctx "products-api/utils/context"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
+	ctx "github.com/kranthi-reddy-gavireddy/products-api.git/utils/context"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"

@@ -1,8 +1,8 @@
 package middeware
 
 import (
-	apperrors "products-api/app-errors"
-	ctx "products-api/utils/context"
+	apperrors "github.com/kranthi-reddy-gavireddy/products-api.git/app-errors"
+	ctx "github.com/kranthi-reddy-gavireddy/products-api.git/utils/context"
 
 	"github.com/gofiber/fiber/v2"
 )

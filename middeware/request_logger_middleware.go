@@ -1,8 +1,9 @@
 package middeware
 
 import (
-	ctx "products-api/utils/context"
 	"time"
+
+	ctx "github.com/kranthi-reddy-gavireddy/products-api.git/utils/context"
 )
 
 type RequestLog struct {

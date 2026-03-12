@@ -1,8 +1,9 @@
 package cache
 
 import (
-	"products-api/internal/config"
 	"sync"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )

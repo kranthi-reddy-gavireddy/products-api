@@ -11,9 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/gofiber/fiber/v2"
 
-	"products-api/internal/database"
-	"products-api/internal/services"
-	"products-api/logger"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/database"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/services"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
 )
 
 type FiberServer struct {

@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"products-api/logger"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
 )
 
 // RunMigrations creates the necessary database tables

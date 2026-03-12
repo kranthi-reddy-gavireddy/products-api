@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"products-api/internal/config"
-	"products-api/logger"
 	"strconv"
 	"time"
+
+	"github.com/kranthi-reddy-gavireddy/products-api.git/internal/config"
+	"github.com/kranthi-reddy-gavireddy/products-api.git/logger"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
